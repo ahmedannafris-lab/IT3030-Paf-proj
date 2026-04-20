@@ -2,6 +2,7 @@ package com.smartcampus.service;
 
 import java.util.List;
 
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import com.smartcampus.model.Notification;
@@ -19,7 +20,7 @@ public class NotificationService {
         return notificationRepository.findByUserId(userId);
     }
 
-    public Notification save(Notification notification) {
+    public Notification save(@NonNull Notification notification) {
         return notificationRepository.save(notification);
     }
 }
