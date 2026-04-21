@@ -9,6 +9,12 @@ export const useAuth = () => useContext(AuthContext);
 const USERS_KEY = 'campus_users';
 const CURRENT_USER_KEY = 'current_user';
 
+const getRoleDefaultBackendId = (role) => {
+  if (role === 'ADMIN') return 1;
+  if (role === 'TECHNICIAN') return 3;
+  return 2;
+};
+
 // Initialize demo users if not exists
 const initializeDemoUsers = () => {
   const users = localStorage.getItem(USERS_KEY);
@@ -16,6 +22,7 @@ const initializeDemoUsers = () => {
     const demoUsers = [
       {
         id: 1,
+        backendUserId: 1,
         name: 'Admin User',
         email: 'admin@campus.com',
         password: 'admin123',
@@ -26,6 +33,7 @@ const initializeDemoUsers = () => {
       },
       {
         id: 2,
+        backendUserId: 2,
         name: 'John User',
         email: 'user@campus.com',
         password: 'user123',
@@ -36,6 +44,7 @@ const initializeDemoUsers = () => {
       },
       {
         id: 3,
+        backendUserId: 3,
         name: 'Tech Support',
         email: 'tech@campus.com',
         password: 'tech123',
@@ -74,7 +83,17 @@ export const AuthProvider = ({ children }) => {
     const currentUser = localStorage.getItem(CURRENT_USER_KEY);
     
     if (currentUser) {
-      const userData = JSON.parse(currentUser);
+      const parsedUser = JSON.parse(currentUser);
+      const userData = {
+        ...parsedUser,
+        backendUserId:
+          parsedUser.backendUserId ||
+          (parsedUser.id > 0 && parsedUser.id <= 3
+            ? parsedUser.id
+            : getRoleDefaultBackendId(parsedUser.role)),
+      };
+
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userData));
       setUser(userData);
       setIsAuthenticated(true);
     }
@@ -96,9 +115,18 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message: 'Account is deactivated.' };
     }
     
+    if (!foundUser.backendUserId) {
+      foundUser.backendUserId =
+        foundUser.id > 0 && foundUser.id <= 3
+          ? foundUser.id
+          : getRoleDefaultBackendId(foundUser.role);
+      saveUsers(users);
+    }
+
     // Store current user (without password)
     const currentUser = {
       id: foundUser.id,
+      backendUserId: foundUser.backendUserId,
       name: foundUser.name,
       email: foundUser.email,
       role: foundUser.role,
@@ -129,6 +157,7 @@ export const AuthProvider = ({ children }) => {
     // Create new user
     const newUser = {
       id: Date.now(),
+      backendUserId: getRoleDefaultBackendId(userData.role || 'USER'),
       name: userData.name,
       email: userData.email,
       password: userData.password,

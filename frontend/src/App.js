@@ -15,6 +15,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import IncidentsPage from "./pages/IncidentsPage";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/incidents" element={<IncidentsPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
