@@ -175,8 +175,15 @@ public class IncidentTicketService {
         IncidentTicket ticket = getTicketOrThrow(ticketId);
 
         boolean isAdmin = actor.getRole() == Role.ADMIN;
-        if (!isAdmin) {
-            ensureAssignedTechnician(ticket, actor);
+        boolean isReporter = ticket.getReporter().getId().equals(actor.getId());
+        boolean isAssignedTechnician = ticket.getAssignedTechnician() != null
+                && ticket.getAssignedTechnician().getId().equals(actor.getId())
+                && actor.getRole() == Role.TECHNICIAN;
+
+        if (!isAdmin && !isReporter && !isAssignedTechnician) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only admin, reporter, or assigned technician can update ticket status");
         }
 
         TicketStatus currentStatus = ticket.getStatus();

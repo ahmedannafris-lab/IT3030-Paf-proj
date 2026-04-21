@@ -48,6 +48,19 @@ const formatDateTime = (value) => {
 const statusClassName = (status) =>
   (status || "").toLowerCase().replaceAll("_", "-");
 
+const getNextStatuses = (status) => {
+  switch (status) {
+    case "OPEN":
+      return ["IN_PROGRESS"];
+    case "IN_PROGRESS":
+      return ["RESOLVED"];
+    case "RESOLVED":
+      return ["CLOSED"];
+    default:
+      return [];
+  }
+};
+
 export default function IncidentsPage() {
   const { user, isAuthenticated, getAllUsers } = useAuth();
 
@@ -128,8 +141,26 @@ export default function IncidentsPage() {
   const canAssignTechnician = user?.role === "ADMIN";
   const canUpdateStatus =
     user?.role === "ADMIN" ||
+    selectedTicket?.reporterId === backendActorUserId ||
     (user?.role === "TECHNICIAN" &&
       selectedTicket?.assignedTechnicianId === backendActorUserId);
+
+  const availableStatusOptions = useMemo(() => {
+    if (!selectedTicket?.status) {
+      return [];
+    }
+
+    const nextStatuses = getNextStatuses(selectedTicket.status);
+    if (
+      user?.role === "ADMIN" &&
+      selectedTicket.status !== "CLOSED" &&
+      selectedTicket.status !== "REJECTED"
+    ) {
+      return [...nextStatuses, "REJECTED"];
+    }
+
+    return nextStatuses;
+  }, [selectedTicket?.status, user?.role]);
 
   const canManageTicketDetails =
     !!selectedTicket &&
@@ -170,8 +201,8 @@ export default function IncidentsPage() {
         preferredContactDetails: ticket.preferredContactDetails || "",
       });
       setStatusForm({
-        status: ticket.status || "",
-        rejectionReason: ticket.rejectionReason || "",
+        status: "",
+        rejectionReason: "",
         resolutionNotes: ticket.resolutionNotes || "",
       });
       setAttachmentFilesToAdd([]);
@@ -251,6 +282,16 @@ export default function IncidentsPage() {
 
     loadTickets();
   }, [backendActorUserId, statusFilter]);
+
+  useEffect(() => {
+    if (!statusForm.status) {
+      return;
+    }
+
+    if (!availableStatusOptions.includes(statusForm.status)) {
+      setStatusForm((prev) => ({ ...prev, status: "" }));
+    }
+  }, [availableStatusOptions, statusForm.status]);
 
   const handleCreateFieldChange = (event) => {
     const { name, value } = event.target;
@@ -1093,14 +1134,20 @@ export default function IncidentsPage() {
                               }))
                             }
                           >
-                            <option value="">Select status</option>
-                            {TICKET_STATUSES.map((status) => (
+                            <option value="">Select next status</option>
+                            {availableStatusOptions.map((status) => (
                               <option key={status} value={status}>
                                 {status}
                               </option>
                             ))}
                           </select>
                         </label>
+
+                        {availableStatusOptions.length === 0 && (
+                          <p className="inc-muted">
+                            No further status transitions available for this ticket.
+                          </p>
+                        )}
 
                         <label>
                           Resolution Notes
@@ -1138,7 +1185,11 @@ export default function IncidentsPage() {
                           type="button"
                           className="inc-primary-btn"
                           onClick={handleStatusChange}
-                          disabled={statusLoading || !statusForm.status}
+                          disabled={
+                            statusLoading ||
+                            !statusForm.status ||
+                            availableStatusOptions.length === 0
+                          }
                         >
                           {statusLoading ? "Saving..." : "Save Status"}
                         </button>
