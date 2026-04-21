@@ -3,6 +3,9 @@ package com.smartcampus.enums;
 public enum NotificationType {
     BOOKING_APPROVED,
     BOOKING_REJECTED,
+    BOOKING_SUBMITTED,
+    BOOKING_CANCELLED_BY_USER,
+    BOOKING_CANCELLED_BY_ADMIN,
     TICKET_STATUS_CHANGED,
     NEW_COMMENT
 }
