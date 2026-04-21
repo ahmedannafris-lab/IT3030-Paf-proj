@@ -46,11 +46,7 @@ export default function App() {
           />
           <Route
             path="/resources"
-            element={
-              <ProtectedRoute>
-                <ResourcesPage />
-              </ProtectedRoute>
-            }
+            element={<ResourcesPage />}
           />
           <Route
             path="/bookings/new"
