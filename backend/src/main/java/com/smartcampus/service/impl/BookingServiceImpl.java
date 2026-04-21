@@ -5,16 +5,13 @@ import com.smartcampus.dto.CreateBookingRequest;
 import com.smartcampus.dto.ResourceDto;
 import com.smartcampus.dto.UserDto;
 import com.smartcampus.enums.BookingStatus;
-import com.smartcampus.enums.NotificationType;
 import com.smartcampus.enums.Role;
 import com.smartcampus.model.AvailabilityWindow;
 import com.smartcampus.model.Booking;
-import com.smartcampus.model.Notification;
 import com.smartcampus.model.User;
 import com.smartcampus.repository.BookingRepository;
 import com.smartcampus.repository.UserRepository;
 import com.smartcampus.service.BookingService;
-import com.smartcampus.service.NotificationService;
 import com.smartcampus.service.ResourceService;
 import com.smartcampus.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +31,6 @@ public class BookingServiceImpl implements BookingService {
     private final ResourceService resourceService;
     private final UserService userService;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -113,17 +109,6 @@ public class BookingServiceImpl implements BookingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Notify User
-        sendNotification(user, NotificationType.BOOKING_SUBMITTED, "Booking Submitted", 
-                "Your booking request for " + resource.getName() + " on " + request.getDate() + " at " + request.getStartTime() + " has been submitted.");
-
-        // Notify Admins
-        List<User> admins = userRepository.findByRole(Role.ADMIN);
-        for (User admin : admins) {
-            sendNotification(admin, NotificationType.BOOKING_SUBMITTED, "New Booking Request", 
-                    user.getName() + " requested a booking for " + resource.getName() + " on " + request.getDate() + " at " + request.getStartTime() + ".");
-        }
-
         return mapToResponse(savedBooking, resource.getName(), user.getName());
     }
 
@@ -156,9 +141,6 @@ public class BookingServiceImpl implements BookingService {
         User user = userRepository.findById(userId).orElseThrow();
         ResourceDto resource = resourceService.getResourceById(booking.getResourceId());
         
-        sendNotification(user, NotificationType.BOOKING_CANCELLED_BY_USER, "Booking Cancelled", 
-                "You cancelled your booking for " + resource.getName() + ".");
-                
         return mapToResponse(updated, resource.getName(), user.getName());
     }
 
@@ -185,9 +167,6 @@ public class BookingServiceImpl implements BookingService {
         User user = userRepository.findById(booking.getUserId()).orElseThrow();
         ResourceDto resource = resourceService.getResourceById(booking.getResourceId());
         
-        sendNotification(user, NotificationType.BOOKING_APPROVED, "Booking Approved", 
-                "Your booking for " + resource.getName() + " on " + booking.getDate() + " has been approved.");
-                
         return mapToResponse(updated, resource.getName(), user.getName());
     }
 
@@ -212,9 +191,6 @@ public class BookingServiceImpl implements BookingService {
         User user = userRepository.findById(booking.getUserId()).orElseThrow();
         ResourceDto resource = resourceService.getResourceById(booking.getResourceId());
         
-        sendNotification(user, NotificationType.BOOKING_REJECTED, "Booking Rejected", 
-                "Your booking was rejected. Reason: " + adminNote);
-                
         return mapToResponse(updated, resource.getName(), user.getName());
     }
 
@@ -235,9 +211,6 @@ public class BookingServiceImpl implements BookingService {
         User user = userRepository.findById(booking.getUserId()).orElseThrow();
         ResourceDto resource = resourceService.getResourceById(booking.getResourceId());
         
-        sendNotification(user, NotificationType.BOOKING_CANCELLED_BY_ADMIN, "Booking Cancelled by Admin", 
-                "Admin cancelled your booking for " + resource.getName() + ".");
-                
         return mapToResponse(updated, resource.getName(), user.getName());
     }
 
@@ -295,16 +268,6 @@ public class BookingServiceImpl implements BookingService {
         }
         
         bookingRepository.delete(booking);
-    }
-
-    private void sendNotification(User user, NotificationType type, String title, String messageStr) {
-        Notification notification = new Notification();
-        notification.setUser(user);
-        notification.setType(type);
-        notification.setTitle(title);
-        notification.setMessage(messageStr);
-        notification.setRead(false);
-        notificationService.save(notification);
     }
 
     private BookingResponse mapToResponseWithLookup(Booking booking) {
