@@ -1,7 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = 'http://localhost:8081/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -24,6 +24,8 @@ export const notificationAPI = {
 
 // User APIs
 export const userAPI = {
+  login: (credentials) => api.post('/users/login', credentials),
+  register: (userData) => api.post('/users/register', userData),
   getCurrentUser: () => api.get('/users/me'),
   getAllUsers: () => api.get('/users'),
   updateRole: (email, role) => api.put('/users/role', { email, role }),

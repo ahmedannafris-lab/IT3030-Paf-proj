@@ -1,5 +1,6 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { userAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -83,65 +84,54 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setError(null);
-    const users = getUsers();
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    
-    if (!foundUser) {
-      setError('Invalid email or password!');
-      return { success: false, message: 'Invalid email or password!' };
+    try {
+      const response = await userAPI.login({ email, password });
+      const foundUser = response.data;
+      
+      if (foundUser.enabled === false) {
+        setError('Account is deactivated. Contact admin.');
+        return { success: false, message: 'Account is deactivated.' };
+      }
+      
+      // Store current user
+      const currentUser = {
+        id: foundUser.id,
+        name: foundUser.name,
+        email: foundUser.email,
+        role: foundUser.role,
+        picture: `https://ui-avatars.com/api/?name=${foundUser.name}&background=random&color=fff`
+      };
+      
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+      localStorage.setItem('userRole', foundUser.role);
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      setUser(currentUser);
+      setIsAuthenticated(true);
+      
+      return { success: true, user: currentUser };
+    } catch (err) {
+      const msg = err.response?.data || 'Invalid email or password!';
+      setError(msg);
+      return { success: false, message: msg };
     }
-    
-    if (!foundUser.isActive) {
-      setError('Account is deactivated. Contact admin.');
-      return { success: false, message: 'Account is deactivated.' };
-    }
-    
-    // Store current user (without password)
-    const currentUser = {
-      id: foundUser.id,
-      name: foundUser.name,
-      email: foundUser.email,
-      role: foundUser.role,
-      picture: foundUser.picture
-    };
-    
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
-    localStorage.setItem('userRole', foundUser.role);
-    localStorage.setItem('isAuthenticated', 'true');
-    
-    setUser(currentUser);
-    setIsAuthenticated(true);
-    
-    return { success: true, user: currentUser };
   };
 
   const register = async (userData) => {
     setError(null);
-    const users = getUsers();
-    
-    // Check if email already exists
-    const existingUser = users.find(u => u.email === userData.email);
-    if (existingUser) {
-      setError('Email already registered!');
-      return { success: false, message: 'Email already registered!' };
+    try {
+      await userAPI.register({
+        name: userData.fullname || userData.name || userData.username,
+        email: userData.email,
+        password: userData.password,
+        role: userData.role || 'USER'
+      });
+      return { success: true, message: 'Registration successful! Please login.' };
+    } catch (err) {
+      const msg = err.response?.data || 'Registration failed!';
+      setError(msg);
+      return { success: false, message: msg };
     }
-    
-    // Create new user
-    const newUser = {
-      id: Date.now(),
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      role: userData.role || 'USER',
-      picture: `https://ui-avatars.com/api/?name=${userData.name}&background=667eea&color=fff`,
-      createdAt: new Date().toISOString(),
-      isActive: true
-    };
-    
-    users.push(newUser);
-    saveUsers(users);
-    
-    return { success: true, message: 'Registration successful! Please login.' };
   };
 
   const logout = () => {
