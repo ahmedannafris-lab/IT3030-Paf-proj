@@ -1,14 +1,13 @@
 // src/components/ProtectedRoute.jsx
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
-  const { isAuthenticated, isLoading, user } = useAuth0();
-  const userRole = localStorage.getItem('userRole');
+  const { isAuthenticated, loading, user } = useAuth();
 
-  if (isLoading) {
+  if (loading) {
     return <LoadingSpinner />;
   }
 
@@ -16,7 +15,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && userRole !== requiredRole) {
+  if (requiredRole && user?.role !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
 

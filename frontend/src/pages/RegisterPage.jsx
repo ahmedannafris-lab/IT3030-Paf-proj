@@ -404,8 +404,32 @@ const RegisterPage = () => {
             </div>
           </div>
 
-          {/* Role Selection (Hidden but included) */}
-          <input type="hidden" name="role" value={formData.role} />
+          {/* Role Selection */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#4a5568', marginBottom: '0.5rem' }}>
+              Select Role
+            </label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                fontSize: '1rem',
+                outline: 'none',
+                transition: 'all 0.3s',
+                background: '#f8fafc',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="USER">User (Student/Staff)</option>
+              <option value="TECHNICIAN">Technician</option>
+              <option value="ADMIN">Administrator</option>
+            </select>
+          </div>
 
           {/* Register Button */}
           <motion.button

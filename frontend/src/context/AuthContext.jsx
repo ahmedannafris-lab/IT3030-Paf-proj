@@ -6,60 +6,7 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
-// User storage key
-const USERS_KEY = 'campus_users';
 const CURRENT_USER_KEY = 'current_user';
-
-// Initialize demo users if not exists
-const initializeDemoUsers = () => {
-  const users = localStorage.getItem(USERS_KEY);
-  if (!users) {
-    const demoUsers = [
-      {
-        id: 1,
-        name: 'Admin User',
-        email: 'admin@campus.com',
-        password: 'admin123',
-        role: 'ADMIN',
-        picture: 'https://ui-avatars.com/api/?name=Admin&background=ff9800&color=fff',
-        createdAt: new Date().toISOString(),
-        isActive: true
-      },
-      {
-        id: 2,
-        name: 'John User',
-        email: 'user@campus.com',
-        password: 'user123',
-        role: 'USER',
-        picture: 'https://ui-avatars.com/api/?name=John&background=4caf50&color=fff',
-        createdAt: new Date().toISOString(),
-        isActive: true
-      },
-      {
-        id: 3,
-        name: 'Tech Support',
-        email: 'tech@campus.com',
-        password: 'tech123',
-        role: 'TECHNICIAN',
-        picture: 'https://ui-avatars.com/api/?name=Tech&background=2196f3&color=fff',
-        createdAt: new Date().toISOString(),
-        isActive: true
-      }
-    ];
-    localStorage.setItem(USERS_KEY, JSON.stringify(demoUsers));
-  }
-};
-
-// Get all registered users
-const getUsers = () => {
-  const users = localStorage.getItem(USERS_KEY);
-  return users ? JSON.parse(users) : [];
-};
-
-// Save users to localStorage
-const saveUsers = (users) => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -68,9 +15,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Initialize demo users
-    initializeDemoUsers();
-    
     // Check if user is logged in on app start
     const currentUser = localStorage.getItem(CURRENT_USER_KEY);
     
@@ -111,7 +55,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: currentUser };
     } catch (err) {
-      const msg = err.response?.data || 'Invalid email or password!';
+      const msg = err.response?.data?.error || err.response?.data || 'Invalid email or password!';
       setError(msg);
       return { success: false, message: msg };
     }
@@ -128,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       });
       return { success: true, message: 'Registration successful! Please login.' };
     } catch (err) {
-      const msg = err.response?.data || 'Registration failed!';
+      const msg = err.response?.data?.error || err.response?.data || 'Registration failed!';
       setError(msg);
       return { success: false, message: msg };
     }
@@ -143,22 +87,11 @@ export const AuthProvider = ({ children }) => {
     return { success: true };
   };
 
-  const updateUserRole = (email, newRole) => {
-    const users = getUsers();
-    const userIndex = users.findIndex(u => u.email === email);
-    
-    if (userIndex === -1) {
-      return { success: false, message: 'User not found' };
-    }
-    
-    users[userIndex].role = newRole;
-    saveUsers(users);
-    
-    return { success: true, message: 'Role updated successfully' };
-  };
-
-  const getAllUsers = () => {
-    return getUsers();
+  const refreshUser = (updatedData) => {
+    const existing = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) || '{}');
+    const newUser = { ...existing, ...updatedData };
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
+    setUser(newUser);
   };
 
   return (
@@ -170,8 +103,7 @@ export const AuthProvider = ({ children }) => {
       login,
       register,
       logout,
-      updateUserRole,
-      getAllUsers
+      refreshUser
     }}>
       {children}
     </AuthContext.Provider>
