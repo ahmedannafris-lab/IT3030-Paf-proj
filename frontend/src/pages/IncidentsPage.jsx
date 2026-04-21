@@ -61,6 +61,19 @@ const getNextStatuses = (status) => {
   }
 };
 
+const getAdminStatusOptions = (status) => {
+  switch (status) {
+    case "OPEN":
+      return ["IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
+    case "IN_PROGRESS":
+      return ["RESOLVED", "CLOSED", "REJECTED"];
+    case "RESOLVED":
+      return ["CLOSED", "REJECTED"];
+    default:
+      return [];
+  }
+};
+
 export default function IncidentsPage() {
   const { user, isAuthenticated, getAllUsers } = useAuth();
 
@@ -150,17 +163,21 @@ export default function IncidentsPage() {
       return [];
     }
 
-    const nextStatuses = getNextStatuses(selectedTicket.status);
-    if (
-      user?.role === "ADMIN" &&
-      selectedTicket.status !== "CLOSED" &&
-      selectedTicket.status !== "REJECTED"
-    ) {
-      return [...nextStatuses, "REJECTED"];
+    if (user?.role === "ADMIN") {
+      return getAdminStatusOptions(selectedTicket.status);
     }
 
-    return nextStatuses;
+    return getNextStatuses(selectedTicket.status);
   }, [selectedTicket?.status, user?.role]);
+
+  const isRejectionWithoutReason =
+    statusForm.status === "REJECTED" && !statusForm.rejectionReason.trim();
+
+  const isCloseWithoutResolution =
+    statusForm.status === "CLOSED" && !statusForm.resolutionNotes.trim();
+
+  const canQuickReject = availableStatusOptions.includes("REJECTED");
+  const canQuickClose = availableStatusOptions.includes("CLOSED");
 
   const canManageTicketDetails =
     !!selectedTicket &&
@@ -521,18 +538,36 @@ export default function IncidentsPage() {
     }
   };
 
-  const handleStatusChange = async () => {
-    if (!selectedTicket?.id || !statusForm.status || !backendActorUserId) {
+  const handleStatusChange = async (targetStatus = statusForm.status) => {
+    if (!selectedTicket?.id || !targetStatus || !backendActorUserId) {
       return;
     }
 
     clearMessages();
+
+    if (!availableStatusOptions.includes(targetStatus)) {
+      setPageError("Selected status is not allowed for this ticket.");
+      return;
+    }
+
+    if (targetStatus === "REJECTED" && !statusForm.rejectionReason.trim()) {
+      setStatusForm((prev) => ({ ...prev, status: "REJECTED" }));
+      setPageError("Rejection reason is required before rejecting ticket.");
+      return;
+    }
+
+    if (targetStatus === "CLOSED" && !statusForm.resolutionNotes.trim()) {
+      setStatusForm((prev) => ({ ...prev, status: "CLOSED" }));
+      setPageError("Resolution notes are required before closing ticket.");
+      return;
+    }
+
     setStatusLoading(true);
 
     try {
       await updateIncidentStatus(selectedTicket.id, {
         actorUserId: backendActorUserId,
-        status: statusForm.status,
+        status: targetStatus,
         rejectionReason: statusForm.rejectionReason,
         resolutionNotes: statusForm.resolutionNotes,
       });
@@ -1123,6 +1158,32 @@ export default function IncidentsPage() {
                     <div className="inc-section">
                       <h3>Update Status</h3>
                       <div className="inc-form">
+                        {(canQuickReject || canQuickClose) && (
+                          <div className="inc-ticket-actions">
+                            {canQuickReject && (
+                              <button
+                                type="button"
+                                className="inc-outline-btn danger"
+                                onClick={() => handleStatusChange("REJECTED")}
+                                disabled={statusLoading || !statusForm.rejectionReason.trim()}
+                              >
+                                Quick Reject
+                              </button>
+                            )}
+
+                            {canQuickClose && (
+                              <button
+                                type="button"
+                                className="inc-outline-btn"
+                                onClick={() => handleStatusChange("CLOSED")}
+                                disabled={statusLoading || !statusForm.resolutionNotes.trim()}
+                              >
+                                Quick Close
+                              </button>
+                            )}
+                          </div>
+                        )}
+
                         <label>
                           Workflow Status
                           <select
@@ -1164,7 +1225,7 @@ export default function IncidentsPage() {
                           />
                         </label>
 
-                        {statusForm.status === "REJECTED" && (
+                        {(statusForm.status === "REJECTED" || canQuickReject) && (
                           <label>
                             Rejection Reason
                             <textarea
@@ -1181,6 +1242,12 @@ export default function IncidentsPage() {
                           </label>
                         )}
 
+                        {(statusForm.status === "CLOSED" || canQuickClose) && (
+                          <p className="inc-muted">
+                            Resolution notes are required when closing a ticket.
+                          </p>
+                        )}
+
                         <button
                           type="button"
                           className="inc-primary-btn"
@@ -1188,7 +1255,9 @@ export default function IncidentsPage() {
                           disabled={
                             statusLoading ||
                             !statusForm.status ||
-                            availableStatusOptions.length === 0
+                            availableStatusOptions.length === 0 ||
+                            isRejectionWithoutReason ||
+                            isCloseWithoutResolution
                           }
                         >
                           {statusLoading ? "Saving..." : "Save Status"}

@@ -201,8 +201,16 @@ public class IncidentTicketService {
             }
             ticket.setStatus(TicketStatus.REJECTED);
             ticket.setRejectionReason(request.getRejectionReason().trim());
+            ticket.setResolutionNotes(null);
         } else {
-            validateStatusTransition(currentStatus, targetStatus);
+            validateStatusTransition(currentStatus, targetStatus, isAdmin);
+
+            if (targetStatus == TicketStatus.CLOSED
+                    && !StringUtils.hasText(request.getResolutionNotes())
+                    && !StringUtils.hasText(ticket.getResolutionNotes())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resolution notes are required to close ticket");
+            }
+
             if (currentStatus != targetStatus) {
                 ticket.setStatus(targetStatus);
             }
@@ -338,7 +346,7 @@ public class IncidentTicketService {
         }
     }
 
-    private void validateStatusTransition(TicketStatus current, TicketStatus target) {
+    private void validateStatusTransition(TicketStatus current, TicketStatus target, boolean isAdmin) {
         if (current == target) {
             return;
         }
@@ -347,17 +355,32 @@ public class IncidentTicketService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No further transitions are allowed");
         }
 
-        boolean isValid = switch (current) {
-            case OPEN -> target == TicketStatus.IN_PROGRESS;
-            case IN_PROGRESS -> target == TicketStatus.RESOLVED;
-            case RESOLVED -> target == TicketStatus.CLOSED;
-            default -> false;
-        };
+        boolean isValid;
+        if (isAdmin) {
+            isValid = switch (current) {
+                case OPEN -> target == TicketStatus.IN_PROGRESS
+                        || target == TicketStatus.RESOLVED
+                        || target == TicketStatus.CLOSED;
+                case IN_PROGRESS -> target == TicketStatus.RESOLVED
+                        || target == TicketStatus.CLOSED;
+                case RESOLVED -> target == TicketStatus.CLOSED;
+                default -> false;
+            };
+        } else {
+            isValid = switch (current) {
+                case OPEN -> target == TicketStatus.IN_PROGRESS;
+                case IN_PROGRESS -> target == TicketStatus.RESOLVED;
+                case RESOLVED -> target == TicketStatus.CLOSED;
+                default -> false;
+            };
+        }
 
         if (!isValid) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid transition. Allowed flow: OPEN -> IN_PROGRESS -> RESOLVED -> CLOSED");
+                    isAdmin
+                            ? "Invalid transition for admin action"
+                            : "Invalid transition. Allowed flow: OPEN -> IN_PROGRESS -> RESOLVED -> CLOSED");
         }
     }
 
