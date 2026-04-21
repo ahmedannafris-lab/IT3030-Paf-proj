@@ -1,0 +1,1223 @@
+import React, { useMemo, useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import {
+  addTicketComment,
+  addIncidentAttachments,
+  assignIncidentTechnician,
+  createIncidentTicket,
+  deleteIncidentAttachment,
+  deleteIncidentTicket,
+  deleteTicketComment,
+  downloadIncidentAttachment,
+  getIncidentTicket,
+  listIncidentTickets,
+  listTicketComments,
+  TICKET_PRIORITIES,
+  TICKET_STATUSES,
+  updateIncidentTicket,
+  updateIncidentStatus,
+  updateTicketComment,
+} from "../services/incidentService";
+import "./IncidentsPage.css";
+
+const defaultCreateForm = {
+  resourceLocation: "",
+  category: "",
+  description: "",
+  priority: "MEDIUM",
+  preferredContactDetails: "",
+};
+
+const defaultEditForm = {
+  resourceLocation: "",
+  category: "",
+  description: "",
+  priority: "MEDIUM",
+  preferredContactDetails: "",
+};
+
+const formatDateTime = (value) => {
+  if (!value) {
+    return "N/A";
+  }
+
+  return new Date(value).toLocaleString();
+};
+
+const statusClassName = (status) =>
+  (status || "").toLowerCase().replaceAll("_", "-");
+
+export default function IncidentsPage() {
+  const { user, isAuthenticated, getAllUsers } = useAuth();
+
+  const backendActorUserId = useMemo(() => {
+    if (!user) {
+      return null;
+    }
+
+    if (Number.isInteger(user.backendUserId)) {
+      return user.backendUserId;
+    }
+
+    if (Number.isInteger(user.id) && user.id > 0 && user.id <= 3) {
+      return user.id;
+    }
+
+    if (user.role === "ADMIN") {
+      return 1;
+    }
+
+    if (user.role === "TECHNICIAN") {
+      return 3;
+    }
+
+    return 2;
+  }, [user]);
+
+  const [tickets, setTickets] = useState([]);
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [comments, setComments] = useState([]);
+
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const [createForm, setCreateForm] = useState(defaultCreateForm);
+  const [createFiles, setCreateFiles] = useState([]);
+  const [editTicketForm, setEditTicketForm] = useState(defaultEditForm);
+
+  const [assignTechnicianId, setAssignTechnicianId] = useState("");
+  const [statusForm, setStatusForm] = useState({
+    status: "",
+    rejectionReason: "",
+    resolutionNotes: "",
+  });
+
+  const [newComment, setNewComment] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [attachmentFilesToAdd, setAttachmentFilesToAdd] = useState([]);
+
+  const [listLoading, setListLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [updateTicketLoading, setUpdateTicketLoading] = useState(false);
+  const [deleteTicketLoading, setDeleteTicketLoading] = useState(false);
+  const [addAttachmentLoading, setAddAttachmentLoading] = useState(false);
+  const [deletingAttachmentId, setDeletingAttachmentId] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const [pageError, setPageError] = useState("");
+  const [actionMessage, setActionMessage] = useState("");
+
+  const technicians = useMemo(() => {
+    if (typeof getAllUsers !== "function") {
+      return [];
+    }
+
+    return getAllUsers().filter(
+      (item) => item.role === "TECHNICIAN" || item.role === "ADMIN"
+    );
+  }, [getAllUsers]);
+
+  const canCreateTicket = isAuthenticated;
+  const canAssignTechnician = user?.role === "ADMIN";
+  const canUpdateStatus =
+    user?.role === "ADMIN" ||
+    (user?.role === "TECHNICIAN" &&
+      selectedTicket?.assignedTechnicianId === backendActorUserId);
+
+  const canManageTicketDetails =
+    !!selectedTicket &&
+    (user?.role === "ADMIN" || selectedTicket?.reporterId === backendActorUserId);
+
+  const canCommentOnTicket =
+    !!selectedTicket &&
+    (user?.role === "ADMIN" ||
+      user?.role === "TECHNICIAN" ||
+      selectedTicket?.reporterId === backendActorUserId);
+
+  const clearMessages = () => {
+    setPageError("");
+    setActionMessage("");
+  };
+
+  const loadTicketDetails = async (ticketId) => {
+    if (!backendActorUserId || !ticketId) {
+      setSelectedTicket(null);
+      setComments([]);
+      setEditTicketForm(defaultEditForm);
+      setAttachmentFilesToAdd([]);
+      return;
+    }
+
+    setDetailsLoading(true);
+    setPageError("");
+
+    try {
+      const ticket = await getIncidentTicket(ticketId, backendActorUserId);
+      setSelectedTicket(ticket);
+      setAssignTechnicianId(ticket.assignedTechnicianId ? `${ticket.assignedTechnicianId}` : "");
+      setEditTicketForm({
+        resourceLocation: ticket.resourceLocation || "",
+        category: ticket.category || "",
+        description: ticket.description || "",
+        priority: ticket.priority || "MEDIUM",
+        preferredContactDetails: ticket.preferredContactDetails || "",
+      });
+      setStatusForm({
+        status: ticket.status || "",
+        rejectionReason: ticket.rejectionReason || "",
+        resolutionNotes: ticket.resolutionNotes || "",
+      });
+      setAttachmentFilesToAdd([]);
+
+      setCommentLoading(true);
+      try {
+        const ticketComments = await listTicketComments(ticketId, backendActorUserId);
+        setComments(Array.isArray(ticketComments) ? ticketComments : []);
+      } catch {
+        setComments(Array.isArray(ticket.comments) ? ticket.comments : []);
+      } finally {
+        setCommentLoading(false);
+      }
+    } catch (error) {
+      setPageError(error.message);
+      setSelectedTicket(null);
+      setComments([]);
+      setEditTicketForm(defaultEditForm);
+      setAttachmentFilesToAdd([]);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const loadTickets = async (preferredTicketId) => {
+    if (!backendActorUserId) {
+      setTickets([]);
+      setSelectedTicket(null);
+      setComments([]);
+      setEditTicketForm(defaultEditForm);
+      return;
+    }
+
+    setListLoading(true);
+    setPageError("");
+
+    try {
+      const nextStatus = statusFilter === "ALL" ? undefined : statusFilter;
+      const data = await listIncidentTickets(backendActorUserId, nextStatus);
+      const safeTickets = Array.isArray(data) ? data : [];
+      setTickets(safeTickets);
+
+      const selectedCandidate =
+        preferredTicketId !== undefined ? preferredTicketId : selectedTicketId;
+
+      const hasCurrent = safeTickets.some((item) => item.id === selectedCandidate);
+      const finalTicketId = hasCurrent
+        ? selectedCandidate
+        : safeTickets.length > 0
+          ? safeTickets[0].id
+          : null;
+
+      setSelectedTicketId(finalTicketId);
+
+      if (finalTicketId) {
+        await loadTicketDetails(finalTicketId);
+      } else {
+        setSelectedTicket(null);
+        setComments([]);
+        setEditTicketForm(defaultEditForm);
+      }
+    } catch (error) {
+      setPageError(error.message);
+      setTickets([]);
+      setSelectedTicket(null);
+      setComments([]);
+      setEditTicketForm(defaultEditForm);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!backendActorUserId) {
+      return;
+    }
+
+    loadTickets();
+  }, [backendActorUserId, statusFilter]);
+
+  const handleCreateFieldChange = (event) => {
+    const { name, value } = event.target;
+    setCreateForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+
+    if (selectedFiles.length > 3) {
+      setPageError("Only up to 3 image attachments are allowed per ticket.");
+      return;
+    }
+
+    const nonImage = selectedFiles.some((file) => !file.type.startsWith("image/"));
+    if (nonImage) {
+      setPageError("Only image files are allowed.");
+      return;
+    }
+
+    setCreateFiles(selectedFiles);
+    setPageError("");
+  };
+
+  const handleAttachmentFilesToAddChange = (event) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    const existingCount = selectedTicket?.attachments?.length || 0;
+
+    if (selectedFiles.length === 0) {
+      setAttachmentFilesToAdd([]);
+      return;
+    }
+
+    if (existingCount + selectedFiles.length > 3) {
+      setPageError("A ticket can include up to 3 image attachments in total.");
+      return;
+    }
+
+    const nonImage = selectedFiles.some((file) => !file.type.startsWith("image/"));
+    if (nonImage) {
+      setPageError("Only image files are allowed.");
+      return;
+    }
+
+    setAttachmentFilesToAdd(selectedFiles);
+    setPageError("");
+  };
+
+  const handleCreateTicket = async (event) => {
+    event.preventDefault();
+
+    if (!backendActorUserId) {
+      return;
+    }
+
+    if (createFiles.length > 3) {
+      setPageError("Only up to 3 image attachments are allowed per ticket.");
+      return;
+    }
+
+    clearMessages();
+    setCreateLoading(true);
+
+    try {
+      const createdTicket = await createIncidentTicket(
+        {
+          reporterId: backendActorUserId,
+          resourceLocation: createForm.resourceLocation,
+          category: createForm.category,
+          description: createForm.description,
+          priority: createForm.priority,
+          preferredContactDetails: createForm.preferredContactDetails,
+        },
+        createFiles
+      );
+
+      setActionMessage(`Ticket #${createdTicket.id} created successfully.`);
+      setCreateForm(defaultCreateForm);
+      setCreateFiles([]);
+      setStatusFilter("ALL");
+      await loadTickets(createdTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleEditTicketFieldChange = (event) => {
+    const { name, value } = event.target;
+    setEditTicketForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleUpdateTicket = async () => {
+    if (!selectedTicket?.id || !backendActorUserId) {
+      return;
+    }
+
+    clearMessages();
+    setUpdateTicketLoading(true);
+
+    try {
+      await updateIncidentTicket(selectedTicket.id, {
+        actorUserId: backendActorUserId,
+        resourceLocation: editTicketForm.resourceLocation,
+        category: editTicketForm.category,
+        description: editTicketForm.description,
+        priority: editTicketForm.priority,
+        preferredContactDetails: editTicketForm.preferredContactDetails,
+      });
+
+      setActionMessage("Ticket updated successfully.");
+      await loadTickets(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setUpdateTicketLoading(false);
+    }
+  };
+
+  const handleDeleteTicket = async () => {
+    if (!selectedTicket?.id || !backendActorUserId) {
+      return;
+    }
+
+    const proceed = window.confirm(
+      `Delete ticket #${selectedTicket.id}? This will also remove its comments and attachments.`
+    );
+
+    if (!proceed) {
+      return;
+    }
+
+    clearMessages();
+    setDeleteTicketLoading(true);
+
+    try {
+      const deletedTicketId = selectedTicket.id;
+      await deleteIncidentTicket(deletedTicketId, backendActorUserId);
+      setActionMessage(`Ticket #${deletedTicketId} deleted.`);
+      setSelectedTicketId(null);
+      await loadTickets(null);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setDeleteTicketLoading(false);
+    }
+  };
+
+  const handleAddAttachments = async () => {
+    if (!selectedTicket?.id || !backendActorUserId || attachmentFilesToAdd.length === 0) {
+      return;
+    }
+
+    clearMessages();
+    setAddAttachmentLoading(true);
+
+    try {
+      await addIncidentAttachments(
+        selectedTicket.id,
+        backendActorUserId,
+        attachmentFilesToAdd
+      );
+
+      setAttachmentFilesToAdd([]);
+      setActionMessage("Attachments updated successfully.");
+      await loadTickets(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setAddAttachmentLoading(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    if (!selectedTicket?.id || !backendActorUserId || !attachmentId) {
+      return;
+    }
+
+    const proceed = window.confirm("Delete this attachment?");
+    if (!proceed) {
+      return;
+    }
+
+    clearMessages();
+    setDeletingAttachmentId(attachmentId);
+
+    try {
+      await deleteIncidentAttachment(selectedTicket.id, attachmentId, backendActorUserId);
+      setActionMessage("Attachment deleted.");
+      await loadTickets(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setDeletingAttachmentId(null);
+    }
+  };
+
+  const handleSelectTicket = async (ticketId) => {
+    setSelectedTicketId(ticketId);
+    await loadTicketDetails(ticketId);
+  };
+
+  const handleAssignTechnician = async () => {
+    if (!selectedTicket?.id || !assignTechnicianId || !backendActorUserId) {
+      return;
+    }
+
+    clearMessages();
+    setAssignLoading(true);
+
+    try {
+      await assignIncidentTechnician(selectedTicket.id, {
+        actorUserId: backendActorUserId,
+        technicianUserId: Number(assignTechnicianId),
+      });
+
+      setActionMessage("Technician assigned successfully.");
+      await loadTickets(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const handleStatusChange = async () => {
+    if (!selectedTicket?.id || !statusForm.status || !backendActorUserId) {
+      return;
+    }
+
+    clearMessages();
+    setStatusLoading(true);
+
+    try {
+      await updateIncidentStatus(selectedTicket.id, {
+        actorUserId: backendActorUserId,
+        status: statusForm.status,
+        rejectionReason: statusForm.rejectionReason,
+        resolutionNotes: statusForm.resolutionNotes,
+      });
+
+      setActionMessage("Ticket status updated.");
+      await loadTickets(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedTicket?.id || !newComment.trim() || !backendActorUserId) {
+      return;
+    }
+
+    clearMessages();
+
+    try {
+      await addTicketComment(selectedTicket.id, {
+        actorUserId: backendActorUserId,
+        content: newComment.trim(),
+      });
+
+      setNewComment("");
+      setActionMessage("Comment added.");
+      await loadTicketDetails(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
+  const handleStartEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.content);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText("");
+  };
+
+  const handleSaveEditComment = async () => {
+    if (!selectedTicket?.id || !editingCommentId || !editingCommentText.trim() || !backendActorUserId) {
+      return;
+    }
+
+    clearMessages();
+
+    try {
+      await updateTicketComment(selectedTicket.id, editingCommentId, {
+        actorUserId: backendActorUserId,
+        content: editingCommentText.trim(),
+      });
+
+      setActionMessage("Comment updated.");
+      handleCancelEditComment();
+      await loadTicketDetails(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!selectedTicket?.id || !commentId || !backendActorUserId) {
+      return;
+    }
+
+    const proceed = window.confirm("Delete this comment?");
+    if (!proceed) {
+      return;
+    }
+
+    clearMessages();
+
+    try {
+      await deleteTicketComment(selectedTicket.id, commentId, backendActorUserId);
+      setActionMessage("Comment deleted.");
+      await loadTicketDetails(selectedTicket.id);
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
+  const handleAttachmentOpen = async (attachment) => {
+    if (!selectedTicket?.id || !attachment?.id || !backendActorUserId) {
+      return;
+    }
+
+    clearMessages();
+
+    try {
+      const blob = await downloadIncidentAttachment(
+        selectedTicket.id,
+        attachment.id,
+        backendActorUserId
+      );
+
+      const objectUrl = URL.createObjectURL(blob);
+      const fileName = attachment.fileName || `attachment-${attachment.id}`;
+
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+    } catch (error) {
+      setPageError(error.message);
+    }
+  };
+
+  if (!isAuthenticated || !backendActorUserId) {
+    return (
+      <div className="inc-page">
+        <div className="inc-shell inc-auth-box">
+          <h2>Incident Ticketing</h2>
+          <p>Please log in to create and manage incident tickets.</p>
+          <Link to="/login" className="inc-primary-link">
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="inc-page">
+      <div className="inc-shell">
+        <header className="inc-header">
+          <div>
+            <h1>Maintenance & Incident Ticketing</h1>
+            <p>
+              Create issues with evidence, assign technicians, track workflow,
+              and collaborate through comments.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="inc-outline-btn"
+            onClick={() => loadTickets(selectedTicketId)}
+            disabled={listLoading}
+          >
+            {listLoading ? "Refreshing..." : "Refresh"}
+          </button>
+        </header>
+
+        {pageError && <div className="inc-alert inc-alert-error">{pageError}</div>}
+        {actionMessage && (
+          <div className="inc-alert inc-alert-success">{actionMessage}</div>
+        )}
+
+        <div className="inc-grid">
+          <section className="inc-left-column">
+            {canCreateTicket && (
+              <article className="inc-panel">
+                <h2>Create Incident Ticket</h2>
+                <form onSubmit={handleCreateTicket} className="inc-form">
+                  <label>
+                    Resource / Location
+                    <input
+                      type="text"
+                      name="resourceLocation"
+                      value={createForm.resourceLocation}
+                      onChange={handleCreateFieldChange}
+                      placeholder="Lab 2 - Projector"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Category
+                    <input
+                      type="text"
+                      name="category"
+                      value={createForm.category}
+                      onChange={handleCreateFieldChange}
+                      placeholder="Projector / Network / Electrical"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Priority
+                    <select
+                      name="priority"
+                      value={createForm.priority}
+                      onChange={handleCreateFieldChange}
+                    >
+                      {TICKET_PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>
+                          {priority}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Preferred Contact Details
+                    <input
+                      type="text"
+                      name="preferredContactDetails"
+                      value={createForm.preferredContactDetails}
+                      onChange={handleCreateFieldChange}
+                      placeholder="077-1234567 / user@campus.com"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Description
+                    <textarea
+                      name="description"
+                      value={createForm.description}
+                      onChange={handleCreateFieldChange}
+                      rows={5}
+                      placeholder="Describe the issue and impact..."
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Evidence Images (up to 3)
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileChange}
+                    />
+                  </label>
+
+                  {createFiles.length > 0 && (
+                    <div className="inc-file-list">
+                      {createFiles.map((file) => (
+                        <span key={file.name + file.size} className="inc-chip">
+                          {file.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="inc-primary-btn"
+                    disabled={createLoading}
+                  >
+                    {createLoading ? "Submitting..." : "Create Ticket"}
+                  </button>
+                </form>
+              </article>
+            )}
+
+            <article className="inc-panel">
+              <div className="inc-panel-head">
+                <h2>Tickets</h2>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                >
+                  <option value="ALL">All Statuses</option>
+                  {TICKET_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {listLoading && <p className="inc-muted">Loading tickets...</p>}
+
+              {!listLoading && tickets.length === 0 && (
+                <p className="inc-muted">No tickets found for the current filter.</p>
+              )}
+
+              <div className="inc-ticket-list">
+                {tickets.map((ticket) => (
+                  <button
+                    type="button"
+                    key={ticket.id}
+                    className={`inc-ticket-item ${
+                      selectedTicketId === ticket.id ? "active" : ""
+                    }`}
+                    onClick={() => handleSelectTicket(ticket.id)}
+                  >
+                    <div className="inc-ticket-item-head">
+                      <strong>#{ticket.id}</strong>
+                      <span
+                        className={`inc-status-badge ${statusClassName(
+                          ticket.status
+                        )}`}
+                      >
+                        {ticket.status}
+                      </span>
+                    </div>
+                    <p>{ticket.category}</p>
+                    <small>{ticket.resourceLocation}</small>
+                  </button>
+                ))}
+              </div>
+            </article>
+          </section>
+
+          <section className="inc-right-column">
+            <article className="inc-panel inc-panel-stretch">
+              {detailsLoading && <p className="inc-muted">Loading ticket details...</p>}
+
+              {!detailsLoading && !selectedTicket && (
+                <p className="inc-muted">Select a ticket to view details.</p>
+              )}
+
+              {!detailsLoading && selectedTicket && (
+                <>
+                  <div className="inc-ticket-detail-head">
+                    <div>
+                      <h2>Ticket #{selectedTicket.id}</h2>
+                      <p>{selectedTicket.category}</p>
+                    </div>
+                    <div className="inc-pill-group">
+                      <span className="inc-pill">{selectedTicket.priority}</span>
+                      <span
+                        className={`inc-status-badge ${statusClassName(
+                          selectedTicket.status
+                        )}`}
+                      >
+                        {selectedTicket.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="inc-meta-grid">
+                    <div>
+                      <strong>Reporter</strong>
+                      <p>{selectedTicket.reporterName}</p>
+                    </div>
+                    <div>
+                      <strong>Assigned Technician</strong>
+                      <p>{selectedTicket.assignedTechnicianName || "Not assigned"}</p>
+                    </div>
+                    <div>
+                      <strong>Location</strong>
+                      <p>{selectedTicket.resourceLocation}</p>
+                    </div>
+                    <div>
+                      <strong>Preferred Contact</strong>
+                      <p>{selectedTicket.preferredContactDetails}</p>
+                    </div>
+                    <div>
+                      <strong>Created</strong>
+                      <p>{formatDateTime(selectedTicket.createdAt)}</p>
+                    </div>
+                    <div>
+                      <strong>Updated</strong>
+                      <p>{formatDateTime(selectedTicket.updatedAt)}</p>
+                    </div>
+                  </div>
+
+                  <div className="inc-description-box">
+                    <strong>Description</strong>
+                    <p>{selectedTicket.description}</p>
+                  </div>
+
+                  {canManageTicketDetails && (
+                    <div className="inc-section">
+                      <h3>Update / Delete Ticket</h3>
+                      <div className="inc-form">
+                        <label>
+                          Resource / Location
+                          <input
+                            type="text"
+                            name="resourceLocation"
+                            value={editTicketForm.resourceLocation}
+                            onChange={handleEditTicketFieldChange}
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Category
+                          <input
+                            type="text"
+                            name="category"
+                            value={editTicketForm.category}
+                            onChange={handleEditTicketFieldChange}
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Priority
+                          <select
+                            name="priority"
+                            value={editTicketForm.priority}
+                            onChange={handleEditTicketFieldChange}
+                          >
+                            {TICKET_PRIORITIES.map((priority) => (
+                              <option key={priority} value={priority}>
+                                {priority}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label>
+                          Preferred Contact Details
+                          <input
+                            type="text"
+                            name="preferredContactDetails"
+                            value={editTicketForm.preferredContactDetails}
+                            onChange={handleEditTicketFieldChange}
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Description
+                          <textarea
+                            rows={4}
+                            name="description"
+                            value={editTicketForm.description}
+                            onChange={handleEditTicketFieldChange}
+                            required
+                          />
+                        </label>
+
+                        <div className="inc-ticket-actions">
+                          <button
+                            type="button"
+                            className="inc-primary-btn"
+                            onClick={handleUpdateTicket}
+                            disabled={updateTicketLoading}
+                          >
+                            {updateTicketLoading ? "Updating..." : "Update Ticket"}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="inc-outline-btn danger"
+                            onClick={handleDeleteTicket}
+                            disabled={deleteTicketLoading}
+                          >
+                            {deleteTicketLoading ? "Deleting..." : "Delete Ticket"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedTicket.rejectionReason && (
+                    <div className="inc-note-box reject">
+                      <strong>Rejection Reason</strong>
+                      <p>{selectedTicket.rejectionReason}</p>
+                    </div>
+                  )}
+
+                  {selectedTicket.resolutionNotes && (
+                    <div className="inc-note-box resolve">
+                      <strong>Resolution Notes</strong>
+                      <p>{selectedTicket.resolutionNotes}</p>
+                    </div>
+                  )}
+
+                  <div className="inc-section">
+                    <h3>Attachments</h3>
+                    {selectedTicket.attachments?.length ? (
+                      <div className="inc-file-list">
+                        {selectedTicket.attachments.map((attachment) => (
+                          <div key={attachment.id} className="inc-chip-row">
+                            <button
+                              type="button"
+                              className="inc-chip inc-chip-button"
+                              onClick={() => handleAttachmentOpen(attachment)}
+                            >
+                              {attachment.fileName}
+                            </button>
+                            {canManageTicketDetails && (
+                              <button
+                                type="button"
+                                className="inc-outline-btn danger inc-attachment-delete-btn"
+                                onClick={() => handleDeleteAttachment(attachment.id)}
+                                disabled={deletingAttachmentId === attachment.id}
+                              >
+                                {deletingAttachmentId === attachment.id ? "Removing..." : "Remove"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="inc-muted">No attachments provided.</p>
+                    )}
+
+                    {canManageTicketDetails && (
+                      <div className="inc-attachment-tools">
+                        <label>
+                          Add Attachment Images (max total: 3)
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleAttachmentFilesToAddChange}
+                          />
+                        </label>
+
+                        {attachmentFilesToAdd.length > 0 && (
+                          <div className="inc-file-list">
+                            {attachmentFilesToAdd.map((file) => (
+                              <span key={file.name + file.size} className="inc-chip">
+                                {file.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          className="inc-primary-btn"
+                          onClick={handleAddAttachments}
+                          disabled={addAttachmentLoading || attachmentFilesToAdd.length === 0}
+                        >
+                          {addAttachmentLoading ? "Uploading..." : "Upload Attachments"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {canAssignTechnician && (
+                    <div className="inc-section">
+                      <h3>Assign Technician</h3>
+                      <div className="inc-inline-form">
+                        <select
+                          value={assignTechnicianId}
+                          onChange={(event) =>
+                            setAssignTechnicianId(event.target.value)
+                          }
+                        >
+                          <option value="">Select technician</option>
+                          {technicians.map((tech) => (
+                            <option key={tech.id} value={tech.id}>
+                              {tech.name} ({tech.role})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="inc-primary-btn"
+                          onClick={handleAssignTechnician}
+                          disabled={assignLoading || !assignTechnicianId}
+                        >
+                          {assignLoading ? "Assigning..." : "Assign"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {canUpdateStatus && (
+                    <div className="inc-section">
+                      <h3>Update Status</h3>
+                      <div className="inc-form">
+                        <label>
+                          Workflow Status
+                          <select
+                            value={statusForm.status}
+                            onChange={(event) =>
+                              setStatusForm((prev) => ({
+                                ...prev,
+                                status: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">Select status</option>
+                            {TICKET_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <label>
+                          Resolution Notes
+                          <textarea
+                            rows={3}
+                            value={statusForm.resolutionNotes}
+                            onChange={(event) =>
+                              setStatusForm((prev) => ({
+                                ...prev,
+                                resolutionNotes: event.target.value,
+                              }))
+                            }
+                            placeholder="Add technical diagnosis and fix notes"
+                          />
+                        </label>
+
+                        {statusForm.status === "REJECTED" && (
+                          <label>
+                            Rejection Reason
+                            <textarea
+                              rows={3}
+                              value={statusForm.rejectionReason}
+                              onChange={(event) =>
+                                setStatusForm((prev) => ({
+                                  ...prev,
+                                  rejectionReason: event.target.value,
+                                }))
+                              }
+                              placeholder="Required when rejecting a ticket"
+                            />
+                          </label>
+                        )}
+
+                        <button
+                          type="button"
+                          className="inc-primary-btn"
+                          onClick={handleStatusChange}
+                          disabled={statusLoading || !statusForm.status}
+                        >
+                          {statusLoading ? "Saving..." : "Save Status"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="inc-section">
+                    <h3>Comments</h3>
+
+                    {commentLoading && <p className="inc-muted">Loading comments...</p>}
+
+                    {!commentLoading && comments.length === 0 && (
+                      <p className="inc-muted">No comments yet.</p>
+                    )}
+
+                    <div className="inc-comments">
+                      {comments.map((comment) => {
+                        const canModifyComment =
+                          user?.role === "ADMIN" || comment.authorId === backendActorUserId;
+
+                        return (
+                          <article key={comment.id} className="inc-comment-card">
+                            <div className="inc-comment-head">
+                              <div>
+                                <strong>{comment.authorName}</strong>
+                                <span>{comment.authorRole}</span>
+                              </div>
+                              <small>{formatDateTime(comment.updatedAt)}</small>
+                            </div>
+
+                            {editingCommentId === comment.id ? (
+                              <>
+                                <textarea
+                                  rows={3}
+                                  value={editingCommentText}
+                                  onChange={(event) =>
+                                    setEditingCommentText(event.target.value)
+                                  }
+                                />
+                                <div className="inc-comment-actions">
+                                  <button
+                                    type="button"
+                                    className="inc-primary-btn"
+                                    onClick={handleSaveEditComment}
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inc-outline-btn"
+                                    onClick={handleCancelEditComment}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <p>{comment.content}</p>
+                                {canModifyComment && (
+                                  <div className="inc-comment-actions">
+                                    <button
+                                      type="button"
+                                      className="inc-outline-btn"
+                                      onClick={() => handleStartEditComment(comment)}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="inc-outline-btn danger"
+                                      onClick={() => handleDeleteComment(comment.id)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    {canCommentOnTicket && (
+                      <div className="inc-comment-compose">
+                        <textarea
+                          rows={3}
+                          placeholder="Write a comment..."
+                          value={newComment}
+                          onChange={(event) => setNewComment(event.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="inc-primary-btn"
+                          onClick={handleAddComment}
+                          disabled={!newComment.trim()}
+                        >
+                          Add Comment
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </article>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
