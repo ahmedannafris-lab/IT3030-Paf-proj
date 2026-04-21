@@ -16,7 +16,6 @@ import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
   updateIncidentTicket,
-  updateIncidentStatus,
   updateTicketComment,
 } from "../services/incidentService";
 import "./IncidentsPage.css";
@@ -35,6 +34,7 @@ const defaultEditForm = {
   description: "",
   priority: "MEDIUM",
   preferredContactDetails: "",
+  status: "OPEN",
 };
 
 const formatDateTime = (value) => {
@@ -47,32 +47,6 @@ const formatDateTime = (value) => {
 
 const statusClassName = (status) =>
   (status || "").toLowerCase().replaceAll("_", "-");
-
-const getNextStatuses = (status) => {
-  switch (status) {
-    case "OPEN":
-      return ["IN_PROGRESS"];
-    case "IN_PROGRESS":
-      return ["RESOLVED"];
-    case "RESOLVED":
-      return ["CLOSED"];
-    default:
-      return [];
-  }
-};
-
-const getAdminStatusOptions = (status) => {
-  switch (status) {
-    case "OPEN":
-      return ["IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"];
-    case "IN_PROGRESS":
-      return ["RESOLVED", "CLOSED", "REJECTED"];
-    case "RESOLVED":
-      return ["CLOSED", "REJECTED"];
-    default:
-      return [];
-  }
-};
 
 export default function IncidentsPage() {
   const { user, isAuthenticated, getAllUsers } = useAuth();
@@ -115,11 +89,6 @@ export default function IncidentsPage() {
   const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
 
   const [assignTechnicianId, setAssignTechnicianId] = useState("");
-  const [statusForm, setStatusForm] = useState({
-    status: "",
-    rejectionReason: "",
-    resolutionNotes: "",
-  });
 
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -135,7 +104,6 @@ export default function IncidentsPage() {
   const [addAttachmentLoading, setAddAttachmentLoading] = useState(false);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState(null);
   const [assignLoading, setAssignLoading] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(false);
 
   const [pageError, setPageError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
@@ -152,32 +120,6 @@ export default function IncidentsPage() {
 
   const canCreateTicket = isAuthenticated;
   const canAssignTechnician = user?.role === "ADMIN";
-  const canUpdateStatus =
-    user?.role === "ADMIN" ||
-    selectedTicket?.reporterId === backendActorUserId ||
-    (user?.role === "TECHNICIAN" &&
-      selectedTicket?.assignedTechnicianId === backendActorUserId);
-
-  const availableStatusOptions = useMemo(() => {
-    if (!selectedTicket?.status) {
-      return [];
-    }
-
-    if (user?.role === "ADMIN") {
-      return getAdminStatusOptions(selectedTicket.status);
-    }
-
-    return getNextStatuses(selectedTicket.status);
-  }, [selectedTicket?.status, user?.role]);
-
-  const isRejectionWithoutReason =
-    statusForm.status === "REJECTED" && !statusForm.rejectionReason.trim();
-
-  const isCloseWithoutResolution =
-    statusForm.status === "CLOSED" && !statusForm.resolutionNotes.trim();
-
-  const canQuickReject = availableStatusOptions.includes("REJECTED");
-  const canQuickClose = availableStatusOptions.includes("CLOSED");
 
   const canManageTicketDetails =
     !!selectedTicket &&
@@ -216,11 +158,7 @@ export default function IncidentsPage() {
         description: ticket.description || "",
         priority: ticket.priority || "MEDIUM",
         preferredContactDetails: ticket.preferredContactDetails || "",
-      });
-      setStatusForm({
-        status: "",
-        rejectionReason: "",
-        resolutionNotes: ticket.resolutionNotes || "",
+        status: ticket.status || "OPEN",
       });
       setAttachmentFilesToAdd([]);
 
@@ -299,16 +237,6 @@ export default function IncidentsPage() {
 
     loadTickets();
   }, [backendActorUserId, statusFilter]);
-
-  useEffect(() => {
-    if (!statusForm.status) {
-      return;
-    }
-
-    if (!availableStatusOptions.includes(statusForm.status)) {
-      setStatusForm((prev) => ({ ...prev, status: "" }));
-    }
-  }, [availableStatusOptions, statusForm.status]);
 
   const handleCreateFieldChange = (event) => {
     const { name, value } = event.target;
@@ -419,6 +347,7 @@ export default function IncidentsPage() {
         description: editTicketForm.description,
         priority: editTicketForm.priority,
         preferredContactDetails: editTicketForm.preferredContactDetails,
+        status: editTicketForm.status,
       });
 
       setActionMessage("Ticket updated successfully.");
@@ -535,49 +464,6 @@ export default function IncidentsPage() {
       setPageError(error.message);
     } finally {
       setAssignLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (targetStatus = statusForm.status) => {
-    if (!selectedTicket?.id || !targetStatus || !backendActorUserId) {
-      return;
-    }
-
-    clearMessages();
-
-    if (!availableStatusOptions.includes(targetStatus)) {
-      setPageError("Selected status is not allowed for this ticket.");
-      return;
-    }
-
-    if (targetStatus === "REJECTED" && !statusForm.rejectionReason.trim()) {
-      setStatusForm((prev) => ({ ...prev, status: "REJECTED" }));
-      setPageError("Rejection reason is required before rejecting ticket.");
-      return;
-    }
-
-    if (targetStatus === "CLOSED" && !statusForm.resolutionNotes.trim()) {
-      setStatusForm((prev) => ({ ...prev, status: "CLOSED" }));
-      setPageError("Resolution notes are required before closing ticket.");
-      return;
-    }
-
-    setStatusLoading(true);
-
-    try {
-      await updateIncidentStatus(selectedTicket.id, {
-        actorUserId: backendActorUserId,
-        status: targetStatus,
-        rejectionReason: statusForm.rejectionReason,
-        resolutionNotes: statusForm.resolutionNotes,
-      });
-
-      setActionMessage("Ticket status updated.");
-      await loadTickets(selectedTicket.id);
-    } catch (error) {
-      setPageError(error.message);
-    } finally {
-      setStatusLoading(false);
     }
   };
 
@@ -1013,6 +899,21 @@ export default function IncidentsPage() {
                           </label>
 
                           <label>
+                            Status
+                            <select
+                              name="status"
+                              value={editTicketForm.status}
+                              onChange={handleEditTicketFieldChange}
+                            >
+                              {TICKET_STATUSES.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label>
                             Preferred Contact Details
                             <input
                               type="text"
@@ -1149,118 +1050,6 @@ export default function IncidentsPage() {
                           disabled={assignLoading || !assignTechnicianId}
                         >
                           {assignLoading ? "Assigning..." : "Assign"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {canUpdateStatus && (
-                    <div className="inc-section">
-                      <h3>Update Status</h3>
-                      <div className="inc-form">
-                        {(canQuickReject || canQuickClose) && (
-                          <div className="inc-ticket-actions">
-                            {canQuickReject && (
-                              <button
-                                type="button"
-                                className="inc-outline-btn danger"
-                                onClick={() => handleStatusChange("REJECTED")}
-                                disabled={statusLoading || !statusForm.rejectionReason.trim()}
-                              >
-                                Quick Reject
-                              </button>
-                            )}
-
-                            {canQuickClose && (
-                              <button
-                                type="button"
-                                className="inc-outline-btn"
-                                onClick={() => handleStatusChange("CLOSED")}
-                                disabled={statusLoading || !statusForm.resolutionNotes.trim()}
-                              >
-                                Quick Close
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <label>
-                          Workflow Status
-                          <select
-                            value={statusForm.status}
-                            onChange={(event) =>
-                              setStatusForm((prev) => ({
-                                ...prev,
-                                status: event.target.value,
-                              }))
-                            }
-                          >
-                            <option value="">Select next status</option>
-                            {availableStatusOptions.map((status) => (
-                              <option key={status} value={status}>
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        {availableStatusOptions.length === 0 && (
-                          <p className="inc-muted">
-                            No further status transitions available for this ticket.
-                          </p>
-                        )}
-
-                        <label>
-                          Resolution Notes
-                          <textarea
-                            rows={3}
-                            value={statusForm.resolutionNotes}
-                            onChange={(event) =>
-                              setStatusForm((prev) => ({
-                                ...prev,
-                                resolutionNotes: event.target.value,
-                              }))
-                            }
-                            placeholder="Add technical diagnosis and fix notes"
-                          />
-                        </label>
-
-                        {(statusForm.status === "REJECTED" || canQuickReject) && (
-                          <label>
-                            Rejection Reason
-                            <textarea
-                              rows={3}
-                              value={statusForm.rejectionReason}
-                              onChange={(event) =>
-                                setStatusForm((prev) => ({
-                                  ...prev,
-                                  rejectionReason: event.target.value,
-                                }))
-                              }
-                              placeholder="Required when rejecting a ticket"
-                            />
-                          </label>
-                        )}
-
-                        {(statusForm.status === "CLOSED" || canQuickClose) && (
-                          <p className="inc-muted">
-                            Resolution notes are required when closing a ticket.
-                          </p>
-                        )}
-
-                        <button
-                          type="button"
-                          className="inc-primary-btn"
-                          onClick={handleStatusChange}
-                          disabled={
-                            statusLoading ||
-                            !statusForm.status ||
-                            availableStatusOptions.length === 0 ||
-                            isRejectionWithoutReason ||
-                            isCloseWithoutResolution
-                          }
-                        >
-                          {statusLoading ? "Saving..." : "Save Status"}
                         </button>
                       </div>
                     </div>

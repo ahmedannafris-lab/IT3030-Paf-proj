@@ -76,6 +76,11 @@ public class IncidentTicketService {
         ticket.setDescription(request.getDescription().trim());
         ticket.setPriority(request.getPriority());
         ticket.setPreferredContactDetails(request.getPreferredContactDetails().trim());
+        ticket.setStatus(request.getStatus());
+
+        if (request.getStatus() != TicketStatus.REJECTED) {
+            ticket.setRejectionReason(null);
+        }
 
         IncidentTicket savedTicket = incidentTicketRepository.save(ticket);
         return toTicketResponse(savedTicket);
@@ -333,12 +338,12 @@ public class IncidentTicketService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only ticket owner or admin can modify this ticket");
         }
 
-        if (!isAdmin && ticket.getStatus() != TicketStatus.OPEN) {
+        if (!isAdmin && forDeletion && ticket.getStatus() != TicketStatus.OPEN) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     forDeletion
                             ? "Only OPEN tickets can be deleted by the reporter"
-                            : "Only OPEN tickets can be updated by the reporter");
+                    : "Only OPEN tickets can be updated by the reporter");
         }
 
         if (!forDeletion && (ticket.getStatus() == TicketStatus.CLOSED || ticket.getStatus() == TicketStatus.REJECTED)) {
