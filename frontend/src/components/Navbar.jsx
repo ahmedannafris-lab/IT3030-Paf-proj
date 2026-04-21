@@ -144,7 +144,19 @@ const Navbar = () => {
                 alignItems: "center",
               }}
             >
-              <span style={{ fontSize: "14px", color: "#333" }}>
+              <span 
+                onClick={() => navigate("/dashboard")}
+                style={{ 
+                  fontSize: "14px", 
+                  color: "#333", 
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  background: "rgba(102, 126, 234, 0.1)"
+                }}
+                title="Go to Dashboard"
+              >
                 👋 {user?.name?.split(" ")[0]}
               </span>
               <button
