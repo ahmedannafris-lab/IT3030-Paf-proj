@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { resourceAPI } from '../services/api';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +9,7 @@ const ResourcesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ type: '', location: '', minCapacity: '' });
+  const navigate = useNavigate();
   
   const { user } = useAuth();
   
@@ -113,7 +115,7 @@ const ResourcesPage = () => {
                     </p>
                   )}
                   
-                  <button style={{ 
+                    <button onClick={() => navigate(`/bookings/new?resourceId=${resource.id}`)} style={{ 
                       marginTop: '1.5rem', 
                       width: '100%', 
                       padding: '0.75rem', 

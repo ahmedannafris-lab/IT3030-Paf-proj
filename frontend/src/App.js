@@ -19,6 +19,10 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import VerifyOtpPage from "./pages/VerifyOtpPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import BookingCreatePage from "./pages/BookingCreatePage";
+import MyBookingsPage from "./pages/MyBookingsPage";
+import BookingDetailPage from "./pages/BookingDetailPage";
+import AdminBookingsPage from "./pages/AdminBookingsPage";
 
 export default function App() {
   return (
@@ -49,10 +53,42 @@ export default function App() {
             }
           />
           <Route
+            path="/bookings/new"
+            element={
+              <ProtectedRoute>
+                <BookingCreatePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookings/my"
+            element={
+              <ProtectedRoute>
+                <MyBookingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bookings/:id"
+            element={
+              <ProtectedRoute>
+                <BookingDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/resources"
             element={
               <ProtectedRoute requiredRole="ADMIN">
                 <AdminResources />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bookings"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminBookingsPage />
               </ProtectedRoute>
             }
           />
