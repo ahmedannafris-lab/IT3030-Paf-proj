@@ -39,117 +39,164 @@ const ResourcesPage = () => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.95, y: 20 },
+    show: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring', bounce: 0.4 } },
+  };
+
+  // Glass style dictionary
+  const glassPanel = {
+    background: 'rgba(255, 255, 255, 0.65)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.8)',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+  };
+
   return (
-    <div style={{ minHeight: '100vh', padding: '2rem', background: '#f8fafc' }}>
+    <div style={{ 
+        minHeight: '100vh', 
+        padding: '2rem', 
+        paddingTop: '100px',
+        background: 'radial-gradient(circle at top left, #f3e8ff, transparent 40%), radial-gradient(circle at bottom right, #e0c3fc 0%, #8ec5fc 100%)',
+        backgroundAttachment: 'fixed'
+    }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h1 style={{ fontSize: '2.5rem', color: '#1a202c', fontWeight: 'bold' }}>Campus Resources</h1>
-            {user?.role === 'ADMIN' && (
-                <a href="/admin/resources" style={{ padding: '0.75rem 1.5rem', backgroundColor: '#4f46e5', color: '#fff', borderRadius: '12px', textDecoration: 'none', fontWeight: '600' }}>Manage Resources</a>
-            )}
-        </div>
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div>
+                <h1 style={{ fontSize: '3rem', color: '#1e1b4b', fontWeight: '900', margin: 0, letterSpacing: '-1px' }}>Campus Resources</h1>
+                <p style={{ margin: '8px 0 0', color: '#4338ca', fontWeight: '500' }}>Browse and discover beautiful spaces for your next project.</p>
+              </div>
+              {user?.role === 'ADMIN' && (
+                  <a href="/admin/resources" style={{ padding: '0.8rem 1.8rem', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', color: '#fff', borderRadius: '16px', textDecoration: 'none', fontWeight: '700', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)', transition: 'transform 0.2s', display: 'inline-block' }}>⚙️ Manage Resources</a>
+              )}
+          </div>
 
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', background: 'white', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-          <select name="type" value={filters.type} onChange={handleFilterChange} style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', flex: 1 }}>
-            <option value="">All Types</option>
-            <option value="LECTURE_HALL">Lecture Hall</option>
-            <option value="LAB">Lab</option>
-            <option value="MEETING_ROOM">Meeting Room</option>
-            <option value="EQUIPMENT">Equipment</option>
-          </select>
-          
-          <input type="text" name="location" placeholder="Location..." value={filters.location} onChange={handleFilterChange} style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', flex: 1 }} />
-          
-          <input type="number" name="minCapacity" placeholder="Min Capacity..." value={filters.minCapacity} onChange={handleFilterChange} style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', flex: 1 }} />
-        </div>
+          {/* Filters Glass Container */}
+          <div style={{ ...glassPanel, display: 'flex', gap: '1rem', marginBottom: '2.5rem', padding: '1.5rem', borderRadius: '24px', flexWrap: 'wrap' }}>
+            <select name="type" value={filters.type} onChange={handleFilterChange} style={{ padding: '0.8rem 1rem', borderRadius: '14px', border: 'none', background: 'rgba(255,255,255,0.7)', flex: 1, fontWeight: '600', color: '#312e81', outline: 'none', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+              <option value="">✨ All Types</option>
+              <option value="LECTURE_HALL">📚 Lecture Hall</option>
+              <option value="LAB">🔬 Lab</option>
+              <option value="MEETING_ROOM">💼 Meeting Room</option>
+              <option value="EQUIPMENT">💻 Equipment</option>
+            </select>
+            
+            <input type="text" name="location" placeholder="📍 Search Location..." value={filters.location} onChange={handleFilterChange} style={{ padding: '0.8rem 1rem', borderRadius: '14px', border: 'none', background: 'rgba(255,255,255,0.7)', flex: 1, fontWeight: '600', color: '#312e81', outline: 'none', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }} />
+            
+            <input type="number" name="minCapacity" placeholder="👥 Min Capacity..." value={filters.minCapacity} onChange={handleFilterChange} style={{ padding: '0.8rem 1rem', borderRadius: '14px', border: 'none', background: 'rgba(255,255,255,0.7)', flex: 1, fontWeight: '600', color: '#312e81', outline: 'none', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }} />
+          </div>
+        </motion.div>
 
-        {error && <div style={{ color: 'red', textAlign: 'center', marginBottom: '1rem' }}>{error}</div>}
+        {error && <div style={{ color: '#991b1b', background: '#fee2e2', padding: '1rem', borderRadius: '12px', textAlign: 'center', marginBottom: '1rem', fontWeight: 'bold' }}>{error}</div>}
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem' }}>Loading resources...</div>
+          <div style={{ textAlign: 'center', padding: '6rem', color: '#4f46e5', fontWeight: 'bold', fontSize: '1.2rem' }}>✨ Summoning resources...</div>
         ) : resources.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: '#718096' }}>No resources found matching your criteria.</div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '6rem', color: '#6366f1', background: 'rgba(255,255,255,0.4)', borderRadius: '24px', fontWeight: '600' }}>
+            No resources cast a matching reflection. Try adjusting your filters!
+          </motion.div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <motion.div variants={containerVariants} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
             {resources.map((resource) => (
               <motion.div
                 key={resource.id}
-                whileHover={{ y: -5 }}
+                variants={itemVariants}
+                whileHover={{ y: -8, scale: 1.02 }}
+                transition={{ type: 'spring', stiffness: 400 }}
                 style={{
-                  background: 'white',
-                  borderRadius: '16px',
+                  ...glassPanel,
+                  borderRadius: '24px',
                   overflow: 'hidden',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                  border: '1px solid #edf2f7'
+                  display: 'flex',
+                  flexDirection: 'column'
                 }}
               >
-                <div style={{ padding: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#2d3748', margin: 0 }}>{resource.name}</h3>
+                <div style={{ padding: '2rem', flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1e1b4b', margin: 0, lineHeight: 1.2 }}>{resource.name}</h3>
                     <span style={{ 
-                        padding: '0.25rem 0.75rem', 
+                        padding: '0.4rem 1rem', 
                         borderRadius: '999px', 
                         fontSize: '0.75rem', 
-                        fontWeight: 'bold',
-                        backgroundColor: resource.status === 'ACTIVE' ? '#c6f6d5' : '#fed7d7',
-                        color: resource.status === 'ACTIVE' ? '#22543d' : '#822727'
+                        fontWeight: '800',
+                        letterSpacing: '0.5px',
+                        backgroundColor: resource.status === 'ACTIVE' ? 'rgba(167, 243, 208, 0.8)' : 'rgba(254, 202, 202, 0.8)',
+                        color: resource.status === 'ACTIVE' ? '#065f46' : '#991b1b',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
                     }}>
                       {resource.status}
                     </span>
                   </div>
                   
-                  <div style={{ color: '#4a5568', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                    <strong>Type:</strong> {resource.type}
-                  </div>
-                  <div style={{ color: '#4a5568', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                    <strong>Location:</strong> {resource.location}
-                  </div>
-                  <div style={{ color: '#4a5568', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                    <strong>Capacity:</strong> {resource.capacity} people
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4338ca', fontSize: '0.95rem', fontWeight: '600' }}>
+                      <span>🔖</span> {resource.type}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4338ca', fontSize: '0.95rem', fontWeight: '600' }}>
+                      <span>📍</span> {resource.location}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4338ca', fontSize: '0.95rem', fontWeight: '600' }}>
+                      <span>👥</span> Up to {resource.capacity} people
+                    </div>
                   </div>
                   
                   {resource.description && (
-                    <p style={{ marginTop: '1rem', color: '#718096', fontSize: '0.875rem', lineHeight: '1.5' }}>
+                    <p style={{ marginTop: '0', color: '#4f46e5', fontSize: '0.9rem', lineHeight: '1.6', opacity: 0.8 }}>
                       {resource.description}
                     </p>
                   )}
-                  
+                </div>
+                
+                <div style={{ padding: '1.5rem', paddingTop: 0 }}>
                   {(!user || user?.role === 'USER') ? (
                     <button onClick={() => navigate(`/bookings/new?resourceId=${resource.id}`)} style={{ 
-                        marginTop: '1.5rem', 
                         width: '100%', 
-                        padding: '0.75rem', 
+                        padding: '1rem', 
                         border: 'none', 
-                        borderRadius: '8px', 
-                        backgroundColor: '#ebdfff', 
-                        color: '#553c9a', 
-                        fontWeight: 'bold', 
-                        cursor: 'pointer' 
-                    }}>
-                      Book Resource
+                        borderRadius: '16px', 
+                        background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', 
+                        color: 'white', 
+                        fontWeight: '800',
+                        fontSize: '1rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                      Reserve Now
                     </button>
                   ) : (
                     <div style={{ 
-                        marginTop: '1.5rem', 
                         width: '100%', 
-                        padding: '0.75rem', 
-                        borderRadius: '8px', 
-                        backgroundColor: '#fff5f5', 
-                        border: '1px solid #fed7d7',
+                        padding: '1rem', 
+                        borderRadius: '16px', 
+                        backgroundColor: 'rgba(255, 245, 245, 0.8)', 
+                        border: '1px solid rgba(254, 215, 215, 0.5)',
                         color: '#e53e3e', 
                         fontSize: '0.85rem',
-                        fontWeight: '600', 
+                        fontWeight: '700', 
                         textAlign: 'center',
                         boxSizing: 'border-box'
                     }}>
-                      Only standard users can book resources.
+                      ⚠️ Standard Users Only
                     </div>
                   )}
                 </div>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

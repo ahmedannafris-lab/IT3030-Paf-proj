@@ -72,77 +72,164 @@ const BookingCreatePage = () => {
     }
   };
 
+  // Premium UI Styling Dictionary
+  const glassPanel = {
+    background: 'rgba(255, 255, 255, 0.65)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.8)',
+    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.05)',
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '16px',
+    borderRadius: '16px',
+    border: 'none',
+    background: 'rgba(255, 255, 255, 0.7)',
+    color: '#312e81',
+    fontWeight: '600',
+    outline: 'none',
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)',
+    boxSizing: 'border-box',
+    transition: 'all 0.3s ease',
+  };
+
+  const inputFocusStyle = "0 0 0 3px rgba(99, 102, 241, 0.3)";
+
   return (
-    <div style={{ minHeight: '100vh', padding: '120px 20px 48px', background: 'linear-gradient(135deg, #eff6ff 0%, #e0f2fe 48%, #f5f3ff 100%)' }}>
+    <div style={{ 
+        minHeight: '100vh', 
+        padding: '120px 20px 48px', 
+        background: 'radial-gradient(circle at top right, #f3e8ff, transparent 40%), radial-gradient(circle at bottom left, #e0f2fe 0%, #e0c3fc 100%)',
+        backgroundAttachment: 'fixed',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center'
+    }}>
       <motion.div
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ maxWidth: '860px', margin: '0 auto', background: 'rgba(255,255,255,0.96)', borderRadius: '28px', boxShadow: '0 24px 60px rgba(37, 99, 235, 0.12)', padding: '32px' }}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', bounce: 0.4, duration: 0.8 }}
+        style={{ width: '100%', maxWidth: '860px', ...glassPanel, borderRadius: '32px', padding: '40px' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', marginBottom: '32px' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '2.2rem', color: '#0f172a' }}>Create Booking</h1>
-            <p style={{ margin: '8px 0 0', color: '#475569' }}>Reserve a campus resource and send it for approval.</p>
+            <h1 style={{ margin: 0, fontSize: '2.5rem', color: '#1e1b4b', fontWeight: '900', letterSpacing: '-1px' }}>Create Booking</h1>
+            <p style={{ margin: '8px 0 0', color: '#4338ca', fontWeight: '500' }}>Secure a campus resource for your next grand event.</p>
           </div>
           <button
             type="button"
             onClick={() => navigate('/bookings/my')}
-            style={{ alignSelf: 'flex-start', padding: '12px 16px', borderRadius: '14px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: '700' }}
+            style={{ 
+              alignSelf: 'flex-start', 
+              padding: '12px 20px', 
+              borderRadius: '16px', 
+              border: '1px solid rgba(99, 102, 241, 0.3)', 
+              background: 'rgba(255,255,255,0.5)', 
+              color: '#4f46e5',
+              cursor: 'pointer', 
+              fontWeight: '800',
+              backdropFilter: 'blur(10px)',
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.background = 'rgba(255,255,255,0.8)'}
+            onMouseLeave={(e) => e.target.style.background = 'rgba(255,255,255,0.5)'}
           >
-            My Bookings
+            📋 My Bookings
           </button>
         </div>
 
         {loading ? (
-          <p>Loading resources...</p>
+          <div style={{ padding: '40px', textAlign: 'center', color: '#4f46e5', fontWeight: 'bold' }}>✨ Loading resources...</div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '24px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '700' }}>Resource</label>
-              <select name="resourceId" value={form.resourceId} onChange={handleChange} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1' }} required>
-                <option value="">Select resource</option>
+              <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Select Resource</label>
+              <select 
+                name="resourceId" 
+                value={form.resourceId} 
+                onChange={handleChange} 
+                style={inputStyle} 
+                onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+                required
+              >
+                <option value="">-- Choose a resource --</option>
                 {resources.map((resource) => (
                   <option key={resource.id} value={resource.id}>
-                    {resource.name} - {resource.location}
+                    {resource.name} ({resource.type}) -📍{resource.location}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '700' }}>Date</label>
-                <input type="date" name="date" value={form.date} onChange={handleChange} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1' }} required />
+                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Date</label>
+                <input type="date" name="date" value={form.date} onChange={handleChange} style={inputStyle} 
+                  onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                  onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+                required />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '700' }}>Start Time</label>
-                <input type="time" name="startTime" value={form.startTime} onChange={handleChange} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1' }} required />
+                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Start Time</label>
+                <input type="time" name="startTime" value={form.startTime} onChange={handleChange} style={inputStyle} 
+                  onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                  onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+                required />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '700' }}>End Time</label>
-                <input type="time" name="endTime" value={form.endTime} onChange={handleChange} style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1' }} required />
+                <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>End Time</label>
+                <input type="time" name="endTime" value={form.endTime} onChange={handleChange} style={inputStyle} 
+                  onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                  onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+                required />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '700' }}>Purpose</label>
-              <textarea name="purpose" value={form.purpose} onChange={handleChange} rows="4" maxLength="200" style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1', resize: 'vertical' }} placeholder="Describe why you need the resource" required />
+              <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Booking Purpose</label>
+              <textarea name="purpose" value={form.purpose} onChange={handleChange} rows="4" maxLength="200" style={{ ...inputStyle, resize: 'vertical' }} placeholder="Provide a detailed reason for the resource request..." 
+                onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+              required />
             </div>
 
-            <div style={{ maxWidth: '220px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '700' }}>Expected Attendees</label>
-              <input type="number" name="expectedAttendees" value={form.expectedAttendees} onChange={handleChange} min="0" style={{ width: '100%', padding: '14px', borderRadius: '14px', border: '1px solid #cbd5e1' }} />
+            <div style={{ maxWidth: '240px' }}>
+              <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Expected Attendees</label>
+              <input type="number" name="expectedAttendees" value={form.expectedAttendees} onChange={handleChange} min="0" style={inputStyle} 
+                onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+              />
             </div>
 
-            {error && <div style={{ padding: '12px 14px', borderRadius: '12px', background: '#fee2e2', color: '#991b1b' }}>{error}</div>}
-            {message && <div style={{ padding: '12px 14px', borderRadius: '12px', background: '#dcfce7', color: '#166534' }}>{message}</div>}
+            {error && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ padding: '16px', borderRadius: '16px', background: 'rgba(254, 226, 226, 0.8)', color: '#991b1b', fontWeight: '800', border: '1px solid #fca5a5' }}>⚠️ {error}</motion.div>}
+            {message && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ padding: '16px', borderRadius: '16px', background: 'rgba(220, 252, 231, 0.8)', color: '#166534', fontWeight: '800', border: '1px solid #86efac' }}>✅ {message}</motion.div>}
 
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button type="submit" disabled={submitting} style={{ padding: '14px 20px', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, #2563eb, #7c3aed)', color: 'white', fontWeight: '800', cursor: 'pointer' }}>
-                {submitting ? 'Submitting...' : 'Submit Booking'}
-              </button>
-              <button type="button" onClick={() => navigate('/resources')} style={{ padding: '14px 20px', borderRadius: '14px', border: '1px solid #cbd5e1', background: '#fff', fontWeight: '700', cursor: 'pointer' }}>
-                Back to Resources
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '16px' }}>
+              <button 
+                type="submit" 
+                disabled={submitting} 
+                style={{ 
+                  flex: '1',
+                  minWidth: '200px',
+                  padding: '18px 24px', 
+                  borderRadius: '16px', 
+                  border: 'none', 
+                  background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', 
+                  color: 'white', 
+                  fontWeight: '900', 
+                  fontSize: '1.1rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 20px rgba(99, 102, 241, 0.3)',
+                  transition: 'transform 0.2s',
+                  opacity: submitting ? 0.7 : 1
+                }}
+                onMouseEnter={(e) => !submitting && (e.currentTarget.style.transform = 'translateY(-2px)')}
+                onMouseLeave={(e) => !submitting && (e.currentTarget.style.transform = 'translateY(0)')}
+              >
+                {submitting ? 'Submitting Request...' : 'Submit Booking Request'}
               </button>
             </div>
           </form>
