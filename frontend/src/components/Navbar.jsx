@@ -100,44 +100,7 @@ const Navbar = () => {
             </Link>
           ))}
 
-          {isAuthenticated && (
-            <>
-              <Link
-                to="/dashboard"
-                style={{ textDecoration: "none", color: "#333" }}
-              >
-                Dashboard
-              </Link>
-              <Link
-                to="/bookings/my"
-                style={{ textDecoration: "none", color: "#333" }}
-              >
-                Bookings
-              </Link>
-              <Link
-                to="/resources"
-                style={{ textDecoration: "none", color: "#333" }}
-              >
-                Resources
-              </Link>
-              {user?.role === "ADMIN" && (
-                <>
-                  <Link
-                    to="/admin"
-                    style={{ textDecoration: "none", color: "#333" }}
-                  >
-                    Admin
-                  </Link>
-                  <Link
-                    to="/admin/bookings"
-                    style={{ textDecoration: "none", color: "#333" }}
-                  >
-                    Booking Admin
-                  </Link>
-                </>
-              )}
-            </>
-          )}
+          {/* Application links have moved to Sidebar */}
         </div>
 
         <div style={{ display: "flex", gap: "12px" }}>
