@@ -115,19 +115,37 @@ const ResourcesPage = () => {
                     </p>
                   )}
                   
+                  {(!user || user?.role === 'USER') ? (
                     <button onClick={() => navigate(`/bookings/new?resourceId=${resource.id}`)} style={{ 
-                      marginTop: '1.5rem', 
-                      width: '100%', 
-                      padding: '0.75rem', 
-                      border: 'none', 
-                      borderRadius: '8px', 
-                      backgroundColor: '#ebdfff', 
-                      color: '#553c9a', 
-                      fontWeight: 'bold', 
-                      cursor: 'pointer' 
-                  }}>
-                    Book Resource
-                  </button>
+                        marginTop: '1.5rem', 
+                        width: '100%', 
+                        padding: '0.75rem', 
+                        border: 'none', 
+                        borderRadius: '8px', 
+                        backgroundColor: '#ebdfff', 
+                        color: '#553c9a', 
+                        fontWeight: 'bold', 
+                        cursor: 'pointer' 
+                    }}>
+                      Book Resource
+                    </button>
+                  ) : (
+                    <div style={{ 
+                        marginTop: '1.5rem', 
+                        width: '100%', 
+                        padding: '0.75rem', 
+                        borderRadius: '8px', 
+                        backgroundColor: '#fff5f5', 
+                        border: '1px solid #fed7d7',
+                        color: '#e53e3e', 
+                        fontSize: '0.85rem',
+                        fontWeight: '600', 
+                        textAlign: 'center',
+                        boxSizing: 'border-box'
+                    }}>
+                      Only standard users can book resources.
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))}
