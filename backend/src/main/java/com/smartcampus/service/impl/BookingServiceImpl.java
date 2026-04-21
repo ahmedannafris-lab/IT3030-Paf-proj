@@ -258,13 +258,6 @@ public class BookingServiceImpl implements BookingService {
             if (booking.getUserId() != userId) {
                 throw new RuntimeException("Unauthorized to delete this booking");
             }
-            if (booking.getStatus() != BookingStatus.CANCELLED && booking.getStatus() != BookingStatus.REJECTED) {
-                throw new RuntimeException("Users can only delete CANCELLED or REJECTED bookings");
-            }
-        } else {
-            if (booking.getStatus() != BookingStatus.CANCELLED && booking.getStatus() != BookingStatus.REJECTED) {
-                throw new RuntimeException("Admins can only delete CANCELLED or REJECTED bookings");
-            }
         }
         
         bookingRepository.delete(booking);

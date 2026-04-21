@@ -157,7 +157,7 @@ const BookingDetailPage = () => {
             </button>
           )}
           
-          {(isOwner || isAdmin) && (booking.status === 'CANCELLED' || booking.status === 'REJECTED') && (
+          {(isOwner || isAdmin) && (
             <button onClick={handleDelete} style={{ padding: '14px 24px', borderRadius: '16px', border: 'none', background: 'rgba(31, 41, 55, 0.9)', color: 'white', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s' }}
               onMouseEnter={(e) => e.target.style.background = '#111827'}
               onMouseLeave={(e) => e.target.style.background = 'rgba(31, 41, 55, 0.9)'}

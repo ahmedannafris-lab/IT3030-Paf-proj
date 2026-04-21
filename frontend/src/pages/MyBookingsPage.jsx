@@ -147,14 +147,12 @@ const MyBookingsPage = () => {
                       Cancel Booking
                     </button>
                   )}
-                  {(booking.status === 'CANCELLED' || booking.status === 'REJECTED') && (
-                    <button onClick={() => handleDelete(booking.id)} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'rgba(31, 41, 55, 0.9)', color: 'white', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s' }}
-                      onMouseEnter={(e) => e.target.style.background = '#111827'}
-                      onMouseLeave={(e) => e.target.style.background = 'rgba(31, 41, 55, 0.9)'}
-                    >
-                      Delete Log
-                    </button>
-                  )}
+                  <button onClick={() => handleDelete(booking.id)} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'rgba(31, 41, 55, 0.9)', color: 'white', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.target.style.background = '#111827'}
+                    onMouseLeave={(e) => e.target.style.background = 'rgba(31, 41, 55, 0.9)'}
+                  >
+                    Delete Log
+                  </button>
                 </div>
               </motion.div>
             ))}

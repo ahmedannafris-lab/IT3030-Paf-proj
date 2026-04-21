@@ -39,6 +39,11 @@ const AdminBookingsPage = () => {
         await bookingAPI.rejectBooking(id, note.trim());
       } else if (action === 'cancel') {
         await bookingAPI.adminCancelBooking(id);
+      } else if (action === 'delete') {
+        if (!window.confirm('Delete this booking log permanently?')) {
+          return;
+        }
+        await bookingAPI.deleteBooking(id);
       }
 
       loadBookings();
@@ -151,13 +156,20 @@ const AdminBookingsPage = () => {
                     </>
                   )}
                   {booking.status === 'APPROVED' && (
-                    <button onClick={() => updateBooking('cancel', booking.id)} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'rgba(31, 41, 55, 0.9)', color: 'white', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s' }}
-                      onMouseEnter={(e) => e.target.style.background = '#111827'}
-                      onMouseLeave={(e) => e.target.style.background = 'rgba(31, 41, 55, 0.9)'}
+                    <button onClick={() => updateBooking('cancel', booking.id)} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'rgba(251, 146, 60, 0.9)', color: 'white', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={(e) => e.target.style.background = '#ea580c'}
+                      onMouseLeave={(e) => e.target.style.background = 'rgba(251, 146, 60, 0.9)'}
                     >
                       Admin Cancel
                     </button>
                   )}
+                  
+                  <button onClick={() => updateBooking('delete', booking.id)} style={{ padding: '10px 20px', borderRadius: '12px', border: 'none', background: 'rgba(31, 41, 55, 0.9)', color: 'white', fontWeight: '800', cursor: 'pointer', transition: 'background 0.2s' }}
+                    onMouseEnter={(e) => e.target.style.background = '#111827'}
+                    onMouseLeave={(e) => e.target.style.background = 'rgba(31, 41, 55, 0.9)'}
+                  >
+                    Delete Booking
+                  </button>
                 </div>
               </motion.div>
             ))}
