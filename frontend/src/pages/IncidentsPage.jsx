@@ -84,7 +84,9 @@ export default function IncidentsPage() {
 
   const [createForm, setCreateForm] = useState(defaultCreateForm);
   const [createFiles, setCreateFiles] = useState([]);
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [editTicketForm, setEditTicketForm] = useState(defaultEditForm);
+  const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
 
   const [assignTechnicianId, setAssignTechnicianId] = useState("");
   const [statusForm, setStatusForm] = useState({
@@ -328,6 +330,7 @@ export default function IncidentsPage() {
       setActionMessage(`Ticket #${createdTicket.id} created successfully.`);
       setCreateForm(defaultCreateForm);
       setCreateFiles([]);
+      setIsCreateFormOpen(false);
       setStatusFilter("ALL");
       await loadTickets(createdTicket.id);
     } catch (error) {
@@ -361,6 +364,7 @@ export default function IncidentsPage() {
       });
 
       setActionMessage("Ticket updated successfully.");
+      setIsUpdateFormOpen(false);
       await loadTickets(selectedTicket.id);
     } catch (error) {
       setPageError(error.message);
@@ -449,6 +453,7 @@ export default function IncidentsPage() {
 
   const handleSelectTicket = async (ticketId) => {
     setSelectedTicketId(ticketId);
+    setIsUpdateFormOpen(false);
     await loadTicketDetails(ticketId);
   };
 
@@ -649,99 +654,115 @@ export default function IncidentsPage() {
           <section className="inc-left-column">
             {canCreateTicket && (
               <article className="inc-panel">
-                <h2>Create Incident Ticket</h2>
-                <form onSubmit={handleCreateTicket} className="inc-form">
-                  <label>
-                    Resource / Location
-                    <input
-                      type="text"
-                      name="resourceLocation"
-                      value={createForm.resourceLocation}
-                      onChange={handleCreateFieldChange}
-                      placeholder="Lab 2 - Projector"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Category
-                    <input
-                      type="text"
-                      name="category"
-                      value={createForm.category}
-                      onChange={handleCreateFieldChange}
-                      placeholder="Projector / Network / Electrical"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Priority
-                    <select
-                      name="priority"
-                      value={createForm.priority}
-                      onChange={handleCreateFieldChange}
-                    >
-                      {TICKET_PRIORITIES.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {priority}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Preferred Contact Details
-                    <input
-                      type="text"
-                      name="preferredContactDetails"
-                      value={createForm.preferredContactDetails}
-                      onChange={handleCreateFieldChange}
-                      placeholder="077-1234567 / user@campus.com"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Description
-                    <textarea
-                      name="description"
-                      value={createForm.description}
-                      onChange={handleCreateFieldChange}
-                      rows={5}
-                      placeholder="Describe the issue and impact..."
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Evidence Images (up to 3)
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileChange}
-                    />
-                  </label>
-
-                  {createFiles.length > 0 && (
-                    <div className="inc-file-list">
-                      {createFiles.map((file) => (
-                        <span key={file.name + file.size} className="inc-chip">
-                          {file.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
+                <div className="inc-panel-head">
+                  <h2>Create Incident Ticket</h2>
                   <button
-                    type="submit"
-                    className="inc-primary-btn"
-                    disabled={createLoading}
+                    type="button"
+                    className="inc-outline-btn"
+                    onClick={() => setIsCreateFormOpen((prev) => !prev)}
                   >
-                    {createLoading ? "Submitting..." : "Create Ticket"}
+                    {isCreateFormOpen ? "Close" : "Create"}
                   </button>
-                </form>
+                </div>
+
+                {!isCreateFormOpen && (
+                  <p className="inc-muted">Click Create to open the ticket form.</p>
+                )}
+
+                {isCreateFormOpen && (
+                  <form onSubmit={handleCreateTicket} className="inc-form">
+                    <label>
+                      Resource / Location
+                      <input
+                        type="text"
+                        name="resourceLocation"
+                        value={createForm.resourceLocation}
+                        onChange={handleCreateFieldChange}
+                        placeholder="Lab 2 - Projector"
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Category
+                      <input
+                        type="text"
+                        name="category"
+                        value={createForm.category}
+                        onChange={handleCreateFieldChange}
+                        placeholder="Projector / Network / Electrical"
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Priority
+                      <select
+                        name="priority"
+                        value={createForm.priority}
+                        onChange={handleCreateFieldChange}
+                      >
+                        {TICKET_PRIORITIES.map((priority) => (
+                          <option key={priority} value={priority}>
+                            {priority}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label>
+                      Preferred Contact Details
+                      <input
+                        type="text"
+                        name="preferredContactDetails"
+                        value={createForm.preferredContactDetails}
+                        onChange={handleCreateFieldChange}
+                        placeholder="077-1234567 / user@campus.com"
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Description
+                      <textarea
+                        name="description"
+                        value={createForm.description}
+                        onChange={handleCreateFieldChange}
+                        rows={5}
+                        placeholder="Describe the issue and impact..."
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Evidence Images (up to 3)
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileChange}
+                      />
+                    </label>
+
+                    {createFiles.length > 0 && (
+                      <div className="inc-file-list">
+                        {createFiles.map((file) => (
+                          <span key={file.name + file.size} className="inc-chip">
+                            {file.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      className="inc-primary-btn"
+                      disabled={createLoading}
+                    >
+                      {createLoading ? "Submitting..." : "Create Ticket"}
+                    </button>
+                  </form>
+                )}
               </article>
             )}
 
@@ -856,87 +877,97 @@ export default function IncidentsPage() {
 
                   {canManageTicketDetails && (
                     <div className="inc-section">
-                      <h3>Update / Delete Ticket</h3>
-                      <div className="inc-form">
-                        <label>
-                          Resource / Location
-                          <input
-                            type="text"
-                            name="resourceLocation"
-                            value={editTicketForm.resourceLocation}
-                            onChange={handleEditTicketFieldChange}
-                            required
-                          />
-                        </label>
+                      <h3>Ticket Actions</h3>
+                      <div className="inc-ticket-actions">
+                        <button
+                          type="button"
+                          className="inc-outline-btn"
+                          onClick={() => setIsUpdateFormOpen((prev) => !prev)}
+                        >
+                          {isUpdateFormOpen ? "Close Update Form" : "Update Ticket"}
+                        </button>
 
-                        <label>
-                          Category
-                          <input
-                            type="text"
-                            name="category"
-                            value={editTicketForm.category}
-                            onChange={handleEditTicketFieldChange}
-                            required
-                          />
-                        </label>
+                        <button
+                          type="button"
+                          className="inc-outline-btn danger"
+                          onClick={handleDeleteTicket}
+                          disabled={deleteTicketLoading}
+                        >
+                          {deleteTicketLoading ? "Deleting..." : "Delete Ticket"}
+                        </button>
+                      </div>
 
-                        <label>
-                          Priority
-                          <select
-                            name="priority"
-                            value={editTicketForm.priority}
-                            onChange={handleEditTicketFieldChange}
-                          >
-                            {TICKET_PRIORITIES.map((priority) => (
-                              <option key={priority} value={priority}>
-                                {priority}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                      {isUpdateFormOpen && (
+                        <div className="inc-form">
+                          <label>
+                            Resource / Location
+                            <input
+                              type="text"
+                              name="resourceLocation"
+                              value={editTicketForm.resourceLocation}
+                              onChange={handleEditTicketFieldChange}
+                              required
+                            />
+                          </label>
 
-                        <label>
-                          Preferred Contact Details
-                          <input
-                            type="text"
-                            name="preferredContactDetails"
-                            value={editTicketForm.preferredContactDetails}
-                            onChange={handleEditTicketFieldChange}
-                            required
-                          />
-                        </label>
+                          <label>
+                            Category
+                            <input
+                              type="text"
+                              name="category"
+                              value={editTicketForm.category}
+                              onChange={handleEditTicketFieldChange}
+                              required
+                            />
+                          </label>
 
-                        <label>
-                          Description
-                          <textarea
-                            rows={4}
-                            name="description"
-                            value={editTicketForm.description}
-                            onChange={handleEditTicketFieldChange}
-                            required
-                          />
-                        </label>
+                          <label>
+                            Priority
+                            <select
+                              name="priority"
+                              value={editTicketForm.priority}
+                              onChange={handleEditTicketFieldChange}
+                            >
+                              {TICKET_PRIORITIES.map((priority) => (
+                                <option key={priority} value={priority}>
+                                  {priority}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
 
-                        <div className="inc-ticket-actions">
+                          <label>
+                            Preferred Contact Details
+                            <input
+                              type="text"
+                              name="preferredContactDetails"
+                              value={editTicketForm.preferredContactDetails}
+                              onChange={handleEditTicketFieldChange}
+                              required
+                            />
+                          </label>
+
+                          <label>
+                            Description
+                            <textarea
+                              rows={4}
+                              name="description"
+                              value={editTicketForm.description}
+                              onChange={handleEditTicketFieldChange}
+                              required
+                            />
+                          </label>
+
                           <button
                             type="button"
                             className="inc-primary-btn"
                             onClick={handleUpdateTicket}
                             disabled={updateTicketLoading}
                           >
-                            {updateTicketLoading ? "Updating..." : "Update Ticket"}
-                          </button>
-
-                          <button
-                            type="button"
-                            className="inc-outline-btn danger"
-                            onClick={handleDeleteTicket}
-                            disabled={deleteTicketLoading}
-                          >
-                            {deleteTicketLoading ? "Deleting..." : "Delete Ticket"}
+                            {updateTicketLoading ? "Updating..." : "Save Ticket Changes"}
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
