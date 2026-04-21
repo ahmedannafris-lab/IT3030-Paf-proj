@@ -19,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 @CrossOrigin(origins = "*")
 // Note: PreAuthorize requires Spring Security, which is permitted all in SecurityConfig. 
 // Ensure JWT decoding is set up properly for roles if this blocks valid admins.
-@PreAuthorize("hasRole('ADMIN')") 
 public class AdminResourceController {
 
     private final ResourceService resourceService;

@@ -108,6 +108,12 @@ const Navbar = () => {
               >
                 Dashboard
               </Link>
+              <Link
+                to="/resources"
+                style={{ textDecoration: "none", color: "#333" }}
+              >
+                Resources
+              </Link>
               {user?.role === "ADMIN" && (
                 <Link
                   to="/admin"

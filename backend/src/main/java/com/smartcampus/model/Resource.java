@@ -37,7 +37,7 @@ public class Resource {
 
     private String imageUrl;                // uploaded image URL
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "resource_tags", joinColumns = @JoinColumn(name = "resource_id"))
     @Column(name = "tag")
     private List<String> tags;              // search keywords
@@ -47,7 +47,7 @@ public class Resource {
     @Lob
     private String notes;                   // internal admin notes
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "resource_availability", joinColumns = @JoinColumn(name = "resource_id"))
     private List<AvailabilityWindow> availabilityWindows;
 
