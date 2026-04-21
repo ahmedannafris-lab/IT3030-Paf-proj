@@ -55,7 +55,7 @@ export default function App() {
           <Route
             path="/bookings/new"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="USER">
                 <BookingCreatePage />
               </ProtectedRoute>
             }

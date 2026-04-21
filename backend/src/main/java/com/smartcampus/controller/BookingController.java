@@ -35,10 +35,14 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<?> createBooking(
             @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) String role,
             @Valid @RequestBody CreateBookingRequest request) {
         try {
             if (userId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Missing user id"));
+            }
+            if (!isUser(role)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only users can create bookings"));
             }
             BookingResponse response = bookingService.createBooking(userId, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -162,6 +166,10 @@ public class BookingController {
 
     private boolean isAdmin(String role) {
         return role != null && role.equalsIgnoreCase("ADMIN");
+    }
+
+    private boolean isUser(String role) {
+        return role != null && role.equalsIgnoreCase("USER");
     }
 
     private ResponseEntity<Map<String, String>> handleException(Exception e) {
