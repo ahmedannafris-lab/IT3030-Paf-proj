@@ -338,14 +338,6 @@ public class IncidentTicketService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only ticket owner or admin can modify this ticket");
         }
 
-        if (!isAdmin && forDeletion && ticket.getStatus() != TicketStatus.OPEN) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    forDeletion
-                            ? "Only OPEN tickets can be deleted by the reporter"
-                    : "Only OPEN tickets can be updated by the reporter");
-        }
-
         if (!forDeletion && (ticket.getStatus() == TicketStatus.CLOSED || ticket.getStatus() == TicketStatus.REJECTED)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Terminal tickets cannot be updated");
         }
