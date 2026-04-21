@@ -1,6 +1,7 @@
 package com.smartcampus.dto;
 
 import com.smartcampus.enums.TicketPriority;
+import com.smartcampus.enums.TicketStatus;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -33,4 +34,7 @@ public class UpdateIncidentTicketRequest {
     @NotBlank(message = "Preferred contact details are required")
     @Size(max = 500, message = "Preferred contact details cannot exceed 500 characters")
     private String preferredContactDetails;
+
+    @NotNull(message = "Status is required")
+    private TicketStatus status;
 }
