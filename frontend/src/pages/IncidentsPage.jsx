@@ -41,6 +41,8 @@ const defaultEditForm = {
   priority: "MEDIUM",
   preferredContactDetails: "",
   status: "OPEN",
+  resolutionNotes: "",
+  assignedTechnicianId: "",
 };
 
 const defaultTechnicianForm = {
@@ -100,7 +102,6 @@ export default function IncidentsPage() {
   const [editTicketForm, setEditTicketForm] = useState(defaultEditForm);
   const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
 
-  const [assignTechnicianId, setAssignTechnicianId] = useState("");
   const [technicians, setTechnicians] = useState([]);
   const [isTechnicianFormOpen, setIsTechnicianFormOpen] = useState(false);
   const [technicianForm, setTechnicianForm] = useState(defaultTechnicianForm);
@@ -120,7 +121,6 @@ export default function IncidentsPage() {
   const [deleteTicketLoading, setDeleteTicketLoading] = useState(false);
   const [addAttachmentLoading, setAddAttachmentLoading] = useState(false);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState(null);
-  const [assignLoading, setAssignLoading] = useState(false);
   const [technicianLoading, setTechnicianLoading] = useState(false);
   const [technicianActionLoading, setTechnicianActionLoading] = useState(false);
   const [deletingTechnicianId, setDeletingTechnicianId] = useState(null);
@@ -161,7 +161,6 @@ export default function IncidentsPage() {
     try {
       const ticket = await getIncidentTicket(ticketId, backendActorUserId);
       setSelectedTicket(ticket);
-      setAssignTechnicianId(ticket.assignedTechnicianId ? `${ticket.assignedTechnicianId}` : "");
       setEditTicketForm({
         resourceLocation: ticket.resourceLocation || "",
         category: ticket.category || "",
@@ -169,6 +168,8 @@ export default function IncidentsPage() {
         priority: ticket.priority || "MEDIUM",
         preferredContactDetails: ticket.preferredContactDetails || "",
         status: ticket.status || "OPEN",
+        resolutionNotes: ticket.resolutionNotes || "",
+        assignedTechnicianId: ticket.assignedTechnicianId ? `${ticket.assignedTechnicianId}` : "",
       });
       setAttachmentFilesToAdd([]);
 
@@ -386,7 +387,23 @@ export default function IncidentsPage() {
         priority: editTicketForm.priority,
         preferredContactDetails: editTicketForm.preferredContactDetails,
         status: editTicketForm.status,
+        resolutionNotes: editTicketForm.resolutionNotes || undefined,
       });
+
+      // Assign technician if changed
+      const currentTechId = selectedTicket.assignedTechnicianId
+        ? `${selectedTicket.assignedTechnicianId}`
+        : "";
+      if (
+        canAssignTechnician &&
+        editTicketForm.assignedTechnicianId !== currentTechId &&
+        editTicketForm.assignedTechnicianId
+      ) {
+        await assignIncidentTechnician(selectedTicket.id, {
+          actorUserId: backendActorUserId,
+          technicianUserId: Number(editTicketForm.assignedTechnicianId),
+        });
+      }
 
       setActionMessage("Ticket updated successfully.");
       setIsUpdateFormOpen(false);
@@ -482,28 +499,6 @@ export default function IncidentsPage() {
     await loadTicketDetails(ticketId);
   };
 
-  const handleAssignTechnician = async () => {
-    if (!selectedTicket?.id || !assignTechnicianId || !backendActorUserId) {
-      return;
-    }
-
-    clearMessages();
-    setAssignLoading(true);
-
-    try {
-      await assignIncidentTechnician(selectedTicket.id, {
-        actorUserId: backendActorUserId,
-        technicianUserId: Number(assignTechnicianId),
-      });
-
-      setActionMessage("Technician assigned successfully.");
-      await loadTickets(selectedTicket.id);
-    } catch (error) {
-      setPageError(error.message);
-    } finally {
-      setAssignLoading(false);
-    }
-  };
 
   const handleTechnicianFieldChange = (event) => {
     const { name, value } = event.target;
@@ -611,10 +606,6 @@ export default function IncidentsPage() {
     try {
       await deleteTechnician(technicianId, backendActorUserId);
       setActionMessage("Technician deleted successfully.");
-
-      if (`${technicianId}` === assignTechnicianId) {
-        setAssignTechnicianId("");
-      }
 
       if (editingTechnicianId === technicianId) {
         handleCancelEditTechnician();
@@ -1238,6 +1229,41 @@ export default function IncidentsPage() {
                             </select>
                           </label>
 
+                          {canAssignTechnician && technicians.length > 0 && (
+                            <label>
+                              Assign Technician
+                              <select
+                                name="assignedTechnicianId"
+                                value={editTicketForm.assignedTechnicianId}
+                                onChange={handleEditTicketFieldChange}
+                              >
+                                <option value="">— No change / keep current —</option>
+                                {technicians.map((tech) => (
+                                  <option key={tech.id} value={`${tech.id}`}>
+                                    {tech.name} ({tech.email})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+
+                          {(editTicketForm.status === "RESOLVED" ||
+                            editTicketForm.status === "CLOSED") && (
+                            <label>
+                              Resolution Notes
+                              {editTicketForm.status === "CLOSED" && !editTicketForm.resolutionNotes && !selectedTicket.resolutionNotes ? (
+                                <span className="inc-field-hint"> (required to close)</span>
+                              ) : null}
+                              <textarea
+                                rows={3}
+                                name="resolutionNotes"
+                                value={editTicketForm.resolutionNotes}
+                                onChange={handleEditTicketFieldChange}
+                                placeholder="Describe what was done to resolve this issue..."
+                              />
+                            </label>
+                          )}
+
                           <label>
                             Preferred Contact Details
                             <input
@@ -1351,34 +1377,7 @@ export default function IncidentsPage() {
                     )}
                   </div>
 
-                  {canAssignTechnician && (
-                    <div className="inc-section">
-                      <h3>Assign Technician</h3>
-                      <div className="inc-inline-form">
-                        <select
-                          value={assignTechnicianId}
-                          onChange={(event) =>
-                            setAssignTechnicianId(event.target.value)
-                          }
-                        >
-                          <option value="">Select technician</option>
-                          {technicians.map((tech) => (
-                            <option key={tech.id} value={tech.id}>
-                              {tech.name} ({tech.email})
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className="inc-primary-btn"
-                          onClick={handleAssignTechnician}
-                          disabled={assignLoading || !assignTechnicianId || technicians.length === 0}
-                        >
-                          {assignLoading ? "Assigning..." : "Assign"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="inc-section">
                     <h3>Comments</h3>

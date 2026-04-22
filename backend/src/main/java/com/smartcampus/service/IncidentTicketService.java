@@ -82,6 +82,10 @@ public class IncidentTicketService {
             ticket.setRejectionReason(null);
         }
 
+        if (StringUtils.hasText(request.getResolutionNotes())) {
+            ticket.setResolutionNotes(request.getResolutionNotes().trim());
+        }
+
         IncidentTicket savedTicket = incidentTicketRepository.save(ticket);
         return toTicketResponse(savedTicket);
     }
