@@ -29,4 +29,8 @@ public class CreateBookingRequest {
 
     @PositiveOrZero(message = "Expected attendees cannot be negative")
     private Integer expectedAttendees;
+
+    private Boolean isRecurring;
+    private String recurrenceType; // "DAILY", "WEEKLY"
+    private LocalDate recurrenceEndDate;
 }

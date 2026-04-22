@@ -19,6 +19,9 @@ const BookingCreatePage = () => {
     endTime: '',
     purpose: '',
     expectedAttendees: 0,
+    isRecurring: false,
+    recurrenceType: 'DAILY',
+    recurrenceEndDate: '',
   });
 
   useEffect(() => {
@@ -48,10 +51,10 @@ const BookingCreatePage = () => {
   }, [location.search]);
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
+    const { name, value, type, checked } = event.target;
     setForm((current) => ({
       ...current,
-      [name]: name === 'expectedAttendees' ? Number(value) : value,
+      [name]: type === 'checkbox' ? checked : (name === 'expectedAttendees' ? Number(value) : value),
     }));
   };
 
@@ -64,7 +67,16 @@ const BookingCreatePage = () => {
       setSubmitting(true);
       const response = await bookingAPI.createBooking(form);
       setMessage('Booking request submitted successfully.');
-      navigate(`/bookings/${response.data.id}`);
+      
+      const createdBookings = response.data;
+      if (Array.isArray(createdBookings) && createdBookings.length > 0) {
+        navigate(`/bookings/${createdBookings[0].id}`);
+      } else if (createdBookings && createdBookings.id) {
+        // Fallback if backend returns single object instead of array
+        navigate(`/bookings/${createdBookings.id}`);
+      } else {
+        navigate('/bookings/my');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create booking.');
     } finally {
@@ -186,6 +198,37 @@ const BookingCreatePage = () => {
                   onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
                 required />
               </div>
+            </div>
+
+            <div style={{ padding: '24px', background: 'rgba(255,255,255,0.4)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.7)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontWeight: '800', color: '#312e81', fontSize: '1.1rem' }}>
+                <input type="checkbox" name="isRecurring" checked={form.isRecurring} onChange={handleChange} style={{ width: '20px', height: '20px', accentColor: '#4f46e5' }} />
+                🔄 Make this a Recurring Booking
+              </label>
+              
+              {form.isRecurring && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', overflow: 'hidden' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Recurrence Pattern</label>
+                    <select name="recurrenceType" value={form.recurrenceType} onChange={handleChange} style={inputStyle} 
+                      onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                      onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+                      required={form.isRecurring}
+                    >
+                      <option value="DAILY">Daily</option>
+                      <option value="WEEKLY">Weekly</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>End Date (Max 30 days)</label>
+                    <input type="date" name="recurrenceEndDate" value={form.recurrenceEndDate} onChange={handleChange} style={inputStyle} 
+                      onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
+                      onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
+                      required={form.isRecurring} 
+                    />
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <div>

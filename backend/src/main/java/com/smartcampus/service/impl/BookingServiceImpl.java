@@ -34,7 +34,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @Transactional
-    public BookingResponse createBooking(long userId, CreateBookingRequest request) {
+    public List<BookingResponse> createBooking(long userId, CreateBookingRequest request) {
         // 1. Resource exists
         ResourceDto resource = resourceService.getResourceById(request.getResourceId());
         
@@ -53,63 +53,101 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("End time must be after start time");
         }
         
-        // 5. Day available in availabilityWindows & 6. startTime >= window.startTime & 7. endTime <= window.endTime
-        if (resource.getAvailabilityWindows() != null && !resource.getAvailabilityWindows().isEmpty()) {
-            AvailabilityWindow matchingWindow = null;
-            for (AvailabilityWindow window : resource.getAvailabilityWindows()) {
-                if (window.getDay().equals(request.getDate().getDayOfWeek())) {
-                    matchingWindow = window;
-                    break;
-                }
-            }
-
-            if (matchingWindow == null) {
-                throw new RuntimeException("Resource not available on " + request.getDate().getDayOfWeek());
-            }
-
-            if (request.getStartTime().isBefore(matchingWindow.getStartTime())) {
-                throw new RuntimeException("Booking start time is before allowed opening time");
-            }
-
-            if (request.getEndTime().isAfter(matchingWindow.getEndTime())) {
-                throw new RuntimeException("Booking end time is after allowed closing time");
-            }
-        }
-        
-        // 8. Purpose not empty, max 200 chars (handled by DTO validation annotations, but adding safeguard)
+        // 5. Purpose not empty, max 200 chars
         if (request.getPurpose() == null || request.getPurpose().trim().isEmpty() || request.getPurpose().length() > 200) {
             throw new RuntimeException("Booking purpose is required and cannot exceed 200 characters");
         }
         
-        // 9. expectedAttendees >= 0 (handled by DTO validation, safe guard)
+        // 6. expectedAttendees >= 0
         if (request.getExpectedAttendees() == null || request.getExpectedAttendees() < 0) {
             throw new RuntimeException("Expected attendees cannot be negative");
         }
         
-        // 10. If resource type != EQUIPMENT, capacity restriction
+        // 7. Capacity restriction
         if (!"EQUIPMENT".equals(resource.getType().name()) && request.getExpectedAttendees() > resource.getCapacity()) {
             throw new RuntimeException("Exceeds resource capacity of " + resource.getCapacity());
         }
-        
-        // 11. No overlapping APPROVED booking
-        checkConflicts(request.getResourceId(), request.getDate(), request.getStartTime(), request.getEndTime());
 
-        Booking booking = new Booking();
-        booking.setResourceId(request.getResourceId());
-        booking.setUserId(userId);
-        booking.setDate(request.getDate());
-        booking.setStartTime(request.getStartTime());
-        booking.setEndTime(request.getEndTime());
-        booking.setPurpose(request.getPurpose());
-        booking.setExpectedAttendees(request.getExpectedAttendees());
-        booking.setStatus(BookingStatus.PENDING);
-        
-        Booking savedBooking = bookingRepository.save(booking);
+        // Calculate all dates to book
+        List<LocalDate> datesToBook = new java.util.ArrayList<>();
+        datesToBook.add(request.getDate());
+
+        if (Boolean.TRUE.equals(request.getIsRecurring())) {
+            if (request.getRecurrenceEndDate() == null) {
+                throw new RuntimeException("Recurrence end date is required for recurring bookings");
+            }
+            if (!request.getRecurrenceEndDate().isAfter(request.getDate())) {
+                throw new RuntimeException("Recurrence end date must be after start date");
+            }
+            long daysBetween = java.time.temporal.ChronoUnit.DAYS.between(request.getDate(), request.getRecurrenceEndDate());
+            if (daysBetween > 30) {
+                throw new RuntimeException("Recurring bookings cannot span more than 30 days");
+            }
+
+            LocalDate currentDate = request.getDate();
+            while (currentDate.isBefore(request.getRecurrenceEndDate())) {
+                if ("DAILY".equalsIgnoreCase(request.getRecurrenceType())) {
+                    currentDate = currentDate.plusDays(1);
+                } else if ("WEEKLY".equalsIgnoreCase(request.getRecurrenceType())) {
+                    currentDate = currentDate.plusWeeks(1);
+                } else {
+                    throw new RuntimeException("Invalid recurrence type. Must be DAILY or WEEKLY");
+                }
+                if (!currentDate.isAfter(request.getRecurrenceEndDate())) {
+                    datesToBook.add(currentDate);
+                }
+            }
+        }
+
+        // Validate ALL dates against windows and conflicts
+        for (LocalDate targetDate : datesToBook) {
+            if (resource.getAvailabilityWindows() != null && !resource.getAvailabilityWindows().isEmpty()) {
+                AvailabilityWindow matchingWindow = null;
+                for (AvailabilityWindow window : resource.getAvailabilityWindows()) {
+                    if (window.getDay().equals(targetDate.getDayOfWeek())) {
+                        matchingWindow = window;
+                        break;
+                    }
+                }
+
+                if (matchingWindow == null) {
+                    throw new RuntimeException("Resource not available on " + targetDate.getDayOfWeek() + " (" + targetDate + ")");
+                }
+
+                if (request.getStartTime().isBefore(matchingWindow.getStartTime())) {
+                    throw new RuntimeException("Booking start time is before allowed opening time on " + targetDate);
+                }
+
+                if (request.getEndTime().isAfter(matchingWindow.getEndTime())) {
+                    throw new RuntimeException("Booking end time is after allowed closing time on " + targetDate);
+                }
+            }
+            
+            checkConflicts(request.getResourceId(), targetDate, request.getStartTime(), request.getEndTime());
+        }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return mapToResponse(savedBooking, resource.getName(), user.getName());
+        List<Booking> bookingsToSave = new java.util.ArrayList<>();
+        for (LocalDate targetDate : datesToBook) {
+            Booking booking = new Booking();
+            booking.setResourceId(request.getResourceId());
+            booking.setUserId(userId);
+            booking.setDate(targetDate);
+            booking.setStartTime(request.getStartTime());
+            booking.setEndTime(request.getEndTime());
+            booking.setPurpose(request.getPurpose());
+            booking.setExpectedAttendees(request.getExpectedAttendees());
+            booking.setStatus(BookingStatus.PENDING);
+            bookingsToSave.add(booking);
+        }
+        
+        List<Booking> savedBookings = bookingRepository.saveAll(bookingsToSave);
+
+        return savedBookings.stream()
+                .map(b -> mapToResponse(b, resource.getName(), user.getName()))
+                .collect(Collectors.toList());
     }
 
     private void checkConflicts(String resourceId, LocalDate date, LocalTime newStart, LocalTime newEnd) {

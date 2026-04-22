@@ -44,7 +44,7 @@ public class BookingController {
             if (!isUser(role)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Only users can create bookings"));
             }
-            BookingResponse response = bookingService.createBooking(userId, request);
+            List<BookingResponse> response = bookingService.createBooking(userId, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
             return handleException(e);

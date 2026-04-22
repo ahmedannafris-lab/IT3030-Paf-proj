@@ -7,7 +7,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface BookingService {
-    BookingResponse createBooking(long userId, CreateBookingRequest request);
+    List<BookingResponse> createBooking(long userId, CreateBookingRequest request);
     BookingResponse cancelBooking(long bookingId, long userId);
     BookingResponse approveBooking(long bookingId, String adminNote);
     BookingResponse rejectBooking(long bookingId, String adminNote);
