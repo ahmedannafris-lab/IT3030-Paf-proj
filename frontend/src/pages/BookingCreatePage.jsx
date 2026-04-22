@@ -50,8 +50,33 @@ const BookingCreatePage = () => {
     loadResources();
   }, [location.search]);
 
+  const getTodayString = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
+
+    // Date validation
+    if (type === 'date' && value) {
+      const selectedDate = new Date(value);
+      const day = selectedDate.getUTCDay();
+      
+      // 0 is Sunday, 6 is Saturday
+      if (day === 0 || day === 6) {
+        setError('Weekends are not allowed for bookings.');
+        return;
+      } else {
+        setError('');
+      }
+    }
+
+    // End date validation
+    if (name === 'recurrenceEndDate' && form.date && value < form.date) {
+      setError('End date cannot be before the start date.');
+      return;
+    }
+
     setForm((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : (name === 'expectedAttendees' ? Number(value) : value),
@@ -62,6 +87,19 @@ const BookingCreatePage = () => {
     event.preventDefault();
     setError('');
     setMessage('');
+
+    if (form.date) {
+      const selectedDate = new Date(form.date);
+      if (selectedDate.getUTCDay() === 0 || selectedDate.getUTCDay() === 6) {
+        setError('Weekends are not allowed for bookings.');
+        return;
+      }
+    }
+
+    if (form.isRecurring && form.recurrenceEndDate && form.recurrenceEndDate < form.date) {
+      setError('End date cannot be before the start date.');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -179,7 +217,7 @@ const BookingCreatePage = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>Date</label>
-                <input type="date" name="date" value={form.date} onChange={handleChange} style={inputStyle} 
+                <input type="date" name="date" value={form.date} onChange={handleChange} min={getTodayString()} style={inputStyle} 
                   onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
                   onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
                 required />
@@ -221,7 +259,7 @@ const BookingCreatePage = () => {
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '10px', fontWeight: '800', color: '#312e81' }}>End Date (Max 30 days)</label>
-                    <input type="date" name="recurrenceEndDate" value={form.recurrenceEndDate} onChange={handleChange} style={inputStyle} 
+                    <input type="date" name="recurrenceEndDate" value={form.recurrenceEndDate} onChange={handleChange} min={form.date || getTodayString()} style={inputStyle} 
                       onFocus={(e) => e.target.style.boxShadow = inputFocusStyle}
                       onBlur={(e) => e.target.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 5px rgba(0,0,0,0.02)'}
                       required={form.isRecurring} 
