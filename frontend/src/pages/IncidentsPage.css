@@ -552,6 +552,12 @@
   color: #5a6791;
 }
 
+.inc-field-hint {
+  color: #b45309;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 @media (max-width: 1180px) {
   .inc-grid {
     grid-template-columns: 1fr;

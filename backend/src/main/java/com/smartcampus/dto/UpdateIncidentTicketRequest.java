@@ -37,4 +37,7 @@ public class UpdateIncidentTicketRequest {
 
     @NotNull(message = "Status is required")
     private TicketStatus status;
+
+    @Size(max = 3000, message = "Resolution notes cannot exceed 3000 characters")
+    private String resolutionNotes;
 }
