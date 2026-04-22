@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.smartcampus.enums.NotificationType;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -44,12 +45,13 @@ public class Notification {
     @Column(nullable = false)
     private NotificationType type;
 
-    @Column(nullable = false)
-    private boolean isRead;
+    @Column(name = "is_read", nullable = false)
+    private boolean read;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "resetOtp", "otpExpiry"})
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

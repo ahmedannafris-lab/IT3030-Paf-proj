@@ -16,7 +16,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     public List<Notification> getUserNotifications(Long userId) {
-        return notificationRepository.findByUserId(userId);
+        return notificationRepository.findByUser_Id(userId);
     }
 
     public Notification save(Notification notification) {

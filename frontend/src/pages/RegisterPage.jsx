@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import { GoogleLogin } from '@react-oauth/google';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -19,8 +20,21 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleSuccess = (credentialResponse) => {
+    const result = loginWithGoogle(credentialResponse);
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
+      setError(result.message);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google sign-up was cancelled or failed. Please try again.');
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -161,6 +175,26 @@ const RegisterPage = () => {
             ⚠ {error}
           </motion.div>
         )}
+
+        {/* Google Sign-Up */}
+        <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            theme="outline"
+            size="large"
+            width="400"
+            text="signup_with"
+            shape="rectangular"
+          />
+        </div>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
+          <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+          <span style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>or register with email</span>
+          <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+        </div>
 
         {/* Register Form */}
         <form onSubmit={handleSubmit}>

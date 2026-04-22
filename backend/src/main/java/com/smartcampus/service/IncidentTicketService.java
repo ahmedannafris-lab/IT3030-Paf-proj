@@ -82,6 +82,10 @@ public class IncidentTicketService {
             ticket.setRejectionReason(null);
         }
 
+        if (StringUtils.hasText(request.getResolutionNotes())) {
+            ticket.setResolutionNotes(request.getResolutionNotes().trim());
+        }
+
         IncidentTicket savedTicket = incidentTicketRepository.save(ticket);
         return toTicketResponse(savedTicket);
     }
@@ -162,6 +166,10 @@ public class IncidentTicketService {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Assigned user must have TECHNICIAN or ADMIN role");
+        }
+
+        if (!technician.isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assigned technician account is disabled");
         }
 
         IncidentTicket ticket = getTicketOrThrow(ticketId);
