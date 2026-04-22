@@ -35,7 +35,7 @@ export default function NotificationsPage() {
         title: "Test Notification",
         message: "Frontend connected successfully!",
         type: "NEW_COMMENT",
-        isRead: false,
+        read: false,
         createdAt: new Date().toISOString(),
         user: {
           id: userId,
