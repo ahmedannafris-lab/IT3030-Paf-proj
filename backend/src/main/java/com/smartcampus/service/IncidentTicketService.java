@@ -164,6 +164,10 @@ public class IncidentTicketService {
                     "Assigned user must have TECHNICIAN or ADMIN role");
         }
 
+        if (!technician.isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Assigned technician account is disabled");
+        }
+
         IncidentTicket ticket = getTicketOrThrow(ticketId);
         if (ticket.getStatus() == TicketStatus.CLOSED || ticket.getStatus() == TicketStatus.REJECTED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot assign technician to a terminal ticket");

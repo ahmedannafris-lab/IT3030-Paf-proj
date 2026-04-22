@@ -13,6 +13,8 @@ public interface IncidentTicketRepository extends JpaRepository<IncidentTicket, 
 
     List<IncidentTicket> findByStatusOrderByCreatedAtDesc(TicketStatus status);
 
+    List<IncidentTicket> findByAssignedTechnicianId(Long assignedTechnicianId);
+
     List<IncidentTicket> findByReporterIdOrderByCreatedAtDesc(Long reporterId);
 
     List<IncidentTicket> findByReporterIdAndStatusOrderByCreatedAtDesc(Long reporterId, TicketStatus status);

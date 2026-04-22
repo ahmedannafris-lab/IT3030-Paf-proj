@@ -18,6 +18,12 @@ import {
   updateIncidentTicket,
   updateTicketComment,
 } from "../services/incidentService";
+import {
+  createTechnician,
+  deleteTechnician,
+  listTechnicians,
+  updateTechnician,
+} from "../services/technicianService";
 import "./IncidentsPage.css";
 
 const defaultCreateForm = {
@@ -37,6 +43,12 @@ const defaultEditForm = {
   status: "OPEN",
 };
 
+const defaultTechnicianForm = {
+  name: "",
+  email: "",
+  password: "",
+};
+
 const formatDateTime = (value) => {
   if (!value) {
     return "N/A";
@@ -49,7 +61,7 @@ const statusClassName = (status) =>
   (status || "").toLowerCase().replaceAll("_", "-");
 
 export default function IncidentsPage() {
-  const { user, isAuthenticated, getAllUsers } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const backendActorUserId = useMemo(() => {
     if (!user) {
@@ -89,6 +101,11 @@ export default function IncidentsPage() {
   const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
 
   const [assignTechnicianId, setAssignTechnicianId] = useState("");
+  const [technicians, setTechnicians] = useState([]);
+  const [isTechnicianFormOpen, setIsTechnicianFormOpen] = useState(false);
+  const [technicianForm, setTechnicianForm] = useState(defaultTechnicianForm);
+  const [editingTechnicianId, setEditingTechnicianId] = useState(null);
+  const [editTechnicianForm, setEditTechnicianForm] = useState(defaultTechnicianForm);
 
   const [newComment, setNewComment] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -104,19 +121,12 @@ export default function IncidentsPage() {
   const [addAttachmentLoading, setAddAttachmentLoading] = useState(false);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState(null);
   const [assignLoading, setAssignLoading] = useState(false);
+  const [technicianLoading, setTechnicianLoading] = useState(false);
+  const [technicianActionLoading, setTechnicianActionLoading] = useState(false);
+  const [deletingTechnicianId, setDeletingTechnicianId] = useState(null);
 
   const [pageError, setPageError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
-
-  const technicians = useMemo(() => {
-    if (typeof getAllUsers !== "function") {
-      return [];
-    }
-
-    return getAllUsers().filter(
-      (item) => item.role === "TECHNICIAN" || item.role === "ADMIN"
-    );
-  }, [getAllUsers]);
 
   const canCreateTicket = isAuthenticated;
   const canAssignTechnician = user?.role === "ADMIN";
@@ -230,6 +240,25 @@ export default function IncidentsPage() {
     }
   };
 
+  const loadTechnicians = async () => {
+    if (!backendActorUserId || !canAssignTechnician) {
+      setTechnicians([]);
+      return;
+    }
+
+    setTechnicianLoading(true);
+
+    try {
+      const data = await listTechnicians(backendActorUserId);
+      setTechnicians(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setPageError(error.message);
+      setTechnicians([]);
+    } finally {
+      setTechnicianLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!backendActorUserId) {
       return;
@@ -237,6 +266,15 @@ export default function IncidentsPage() {
 
     loadTickets();
   }, [backendActorUserId, statusFilter]);
+
+  useEffect(() => {
+    if (!canAssignTechnician || !backendActorUserId) {
+      setTechnicians([]);
+      return;
+    }
+
+    loadTechnicians();
+  }, [backendActorUserId, canAssignTechnician]);
 
   const handleCreateFieldChange = (event) => {
     const { name, value } = event.target;
@@ -464,6 +502,132 @@ export default function IncidentsPage() {
       setPageError(error.message);
     } finally {
       setAssignLoading(false);
+    }
+  };
+
+  const handleTechnicianFieldChange = (event) => {
+    const { name, value } = event.target;
+    setTechnicianForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditTechnicianFieldChange = (event) => {
+    const { name, value } = event.target;
+    setEditTechnicianForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateTechnician = async (event) => {
+    event.preventDefault();
+
+    if (!backendActorUserId || !canAssignTechnician) {
+      return;
+    }
+
+    clearMessages();
+    setTechnicianActionLoading(true);
+
+    try {
+      await createTechnician({
+        actorUserId: backendActorUserId,
+        name: technicianForm.name,
+        email: technicianForm.email,
+        password: technicianForm.password,
+      });
+
+      setActionMessage("Technician created successfully.");
+      setTechnicianForm(defaultTechnicianForm);
+      setIsTechnicianFormOpen(false);
+      await loadTechnicians();
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setTechnicianActionLoading(false);
+    }
+  };
+
+  const handleStartEditTechnician = (technician) => {
+    setEditingTechnicianId(technician.id);
+    setEditTechnicianForm({
+      name: technician.name || "",
+      email: technician.email || "",
+      password: "",
+    });
+  };
+
+  const handleCancelEditTechnician = () => {
+    setEditingTechnicianId(null);
+    setEditTechnicianForm(defaultTechnicianForm);
+  };
+
+  const handleSaveTechnician = async () => {
+    if (!editingTechnicianId || !backendActorUserId || !canAssignTechnician) {
+      return;
+    }
+
+    clearMessages();
+    setTechnicianActionLoading(true);
+
+    try {
+      const payload = {
+        actorUserId: backendActorUserId,
+        name: editTechnicianForm.name,
+        email: editTechnicianForm.email,
+      };
+
+      if (editTechnicianForm.password.trim()) {
+        payload.password = editTechnicianForm.password;
+      }
+
+      await updateTechnician(editingTechnicianId, payload);
+
+      setActionMessage("Technician updated successfully.");
+      handleCancelEditTechnician();
+      await loadTechnicians();
+      if (selectedTicket?.id) {
+        await loadTicketDetails(selectedTicket.id);
+      }
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setTechnicianActionLoading(false);
+    }
+  };
+
+  const handleDeleteTechnicianRecord = async (technicianId) => {
+    if (!technicianId || !backendActorUserId || !canAssignTechnician) {
+      return;
+    }
+
+    const proceed = window.confirm(
+      "Delete this technician? Assigned tickets will be unassigned."
+    );
+
+    if (!proceed) {
+      return;
+    }
+
+    clearMessages();
+    setDeletingTechnicianId(technicianId);
+
+    try {
+      await deleteTechnician(technicianId, backendActorUserId);
+      setActionMessage("Technician deleted successfully.");
+
+      if (`${technicianId}` === assignTechnicianId) {
+        setAssignTechnicianId("");
+      }
+
+      if (editingTechnicianId === technicianId) {
+        handleCancelEditTechnician();
+      }
+
+      await loadTechnicians();
+      if (selectedTicket?.id) {
+        await loadTicketDetails(selectedTicket.id);
+      }
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setDeletingTechnicianId(null);
     }
   };
 
@@ -724,6 +888,167 @@ export default function IncidentsPage() {
                       {createLoading ? "Submitting..." : "Create Ticket"}
                     </button>
                   </form>
+                )}
+              </article>
+            )}
+
+            {canAssignTechnician && (
+              <article className="inc-panel">
+                <div className="inc-panel-head">
+                  <h2>Technician Management</h2>
+                  <button
+                    type="button"
+                    className="inc-outline-btn"
+                    onClick={() => setIsTechnicianFormOpen((prev) => !prev)}
+                  >
+                    {isTechnicianFormOpen ? "Close" : "Add Technician"}
+                  </button>
+                </div>
+
+                {!isTechnicianFormOpen && (
+                  <p className="inc-muted">
+                    Manage technician accounts used for incident assignment.
+                  </p>
+                )}
+
+                {isTechnicianFormOpen && (
+                  <form className="inc-form" onSubmit={handleCreateTechnician}>
+                    <label>
+                      Name
+                      <input
+                        type="text"
+                        name="name"
+                        value={technicianForm.name}
+                        onChange={handleTechnicianFieldChange}
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Email
+                      <input
+                        type="email"
+                        name="email"
+                        value={technicianForm.email}
+                        onChange={handleTechnicianFieldChange}
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Password
+                      <input
+                        type="password"
+                        name="password"
+                        value={technicianForm.password}
+                        onChange={handleTechnicianFieldChange}
+                        minLength={6}
+                        required
+                      />
+                    </label>
+
+                    <button
+                      type="submit"
+                      className="inc-primary-btn"
+                      disabled={technicianActionLoading}
+                    >
+                      {technicianActionLoading ? "Saving..." : "Create Technician"}
+                    </button>
+                  </form>
+                )}
+
+                {technicianLoading && <p className="inc-muted">Loading technicians...</p>}
+
+                {!technicianLoading && technicians.length === 0 && (
+                  <p className="inc-muted">No active technicians found.</p>
+                )}
+
+                {!technicianLoading && technicians.length > 0 && (
+                  <div className="inc-tech-list">
+                    {technicians.map((tech) => (
+                      <article key={tech.id} className="inc-tech-card">
+                        {editingTechnicianId === tech.id ? (
+                          <div className="inc-tech-edit-grid">
+                            <label>
+                              Name
+                              <input
+                                type="text"
+                                name="name"
+                                value={editTechnicianForm.name}
+                                onChange={handleEditTechnicianFieldChange}
+                                required
+                              />
+                            </label>
+
+                            <label>
+                              Email
+                              <input
+                                type="email"
+                                name="email"
+                                value={editTechnicianForm.email}
+                                onChange={handleEditTechnicianFieldChange}
+                                required
+                              />
+                            </label>
+
+                            <label>
+                              New Password (optional)
+                              <input
+                                type="password"
+                                name="password"
+                                value={editTechnicianForm.password}
+                                onChange={handleEditTechnicianFieldChange}
+                                minLength={6}
+                              />
+                            </label>
+
+                            <div className="inc-comment-actions">
+                              <button
+                                type="button"
+                                className="inc-primary-btn"
+                                onClick={handleSaveTechnician}
+                                disabled={technicianActionLoading}
+                              >
+                                {technicianActionLoading ? "Saving..." : "Save"}
+                              </button>
+                              <button
+                                type="button"
+                                className="inc-outline-btn"
+                                onClick={handleCancelEditTechnician}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="inc-tech-meta">
+                              <strong>{tech.name}</strong>
+                              <small>{tech.email}</small>
+                              <span>Technician ID: {tech.id}</span>
+                            </div>
+                            <div className="inc-comment-actions">
+                              <button
+                                type="button"
+                                className="inc-outline-btn"
+                                onClick={() => handleStartEditTechnician(tech)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="inc-outline-btn danger"
+                                onClick={() => handleDeleteTechnicianRecord(tech.id)}
+                                disabled={deletingTechnicianId === tech.id}
+                              >
+                                {deletingTechnicianId === tech.id ? "Deleting..." : "Delete"}
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </article>
+                    ))}
+                  </div>
                 )}
               </article>
             )}
@@ -1039,7 +1364,7 @@ export default function IncidentsPage() {
                           <option value="">Select technician</option>
                           {technicians.map((tech) => (
                             <option key={tech.id} value={tech.id}>
-                              {tech.name} ({tech.role})
+                              {tech.name} ({tech.email})
                             </option>
                           ))}
                         </select>
@@ -1047,7 +1372,7 @@ export default function IncidentsPage() {
                           type="button"
                           className="inc-primary-btn"
                           onClick={handleAssignTechnician}
-                          disabled={assignLoading || !assignTechnicianId}
+                          disabled={assignLoading || !assignTechnicianId || technicians.length === 0}
                         >
                           {assignLoading ? "Assigning..." : "Assign"}
                         </button>
