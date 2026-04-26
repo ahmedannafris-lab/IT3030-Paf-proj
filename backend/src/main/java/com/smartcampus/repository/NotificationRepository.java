@@ -8,5 +8,5 @@ import com.smartcampus.model.Notification;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByUserId(Long userId);
+    List<Notification> findByUser_Id(Long userId);
 }

@@ -2,19 +2,16 @@ package com.smartcampus.model;
 
 import java.time.LocalDateTime;
 
-import com.smartcampus.enums.NotificationType;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,36 +20,40 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "incident_attachments")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Notification {
+public class IncidentAttachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String title;
-
-    @Column(nullable = false, length = 1000)
-    private String message;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private NotificationType type;
-
-    @Column(name = "is_read", nullable = false)
-    private boolean read;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "resetOtp", "otpExpiry"})
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "ticket_id", nullable = false)
+    private IncidentTicket ticket;
+
+    @Column(nullable = false)
+    private String fileName;
+
+    @Column(nullable = false)
+    private String contentType;
+
+    @Column(nullable = false)
+    private Long fileSize;
+
+    @Lob
+    @Column(nullable = false, columnDefinition = "LONGBLOB")
+    private byte[] data;
+
+    @Column(nullable = false)
+    private LocalDateTime uploadedAt;
+
+    @PrePersist
+    public void onCreate() {
+        uploadedAt = LocalDateTime.now();
+    }
 }
